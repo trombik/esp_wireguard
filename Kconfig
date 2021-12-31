@@ -1,0 +1,16 @@
+menu "Wireguard"
+
+config WIREGUARD_MAX_PEERS
+    int "Max number of peers"
+    default 1
+
+config WIREGUARD_MAX_SRC_IPS
+	int "Max number of SRC IP addresses"
+	default 2
+
+config MAX_INITIATIONS_PER_SECOND
+    int "Per device limit on accepting (valid) initiation requests"
+    default 2
+    help
+        Per device limit on accepting (valid) initiation requests - per peer.
+endmenu
