@@ -3,6 +3,8 @@
 This is an implementation of the [WireGuard&reg;](https://www.wireguard.com/)
 for ESP-IDF.
 
+[![Build examples](https://github.com/ciniml/wireguard-lwip-esp32/actions/workflows/build.yml/badge.svg)](https://github.com/ciniml/wireguard-lwip-esp32/actions/workflows/build.yml)
+
 Almost all of this code is based on the
 [WireGuard Implementation for lwIP](https://github.com/smartalock/wireguard-lwip),
 but some potion of the code is adjusted to build with ESP- to run on ESP32
