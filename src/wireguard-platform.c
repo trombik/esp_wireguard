@@ -7,8 +7,6 @@
 #include "mbedtls/ctr_drbg.h"
 #include "esp_system.h"
 
-// This file contains a sample Wireguard platform integration
-
 static struct mbedtls_ctr_drbg_context random_context;
 static struct mbedtls_entropy_context entropy_context;
 
@@ -35,7 +33,6 @@ uint32_t wireguard_sys_now() {
 	return sys_now();
 }
 
-// CHANGE THIS TO GET THE ACTUAL UNIX TIMESTMP IN MILLIS - HANDSHAKES WILL FAIL IF THIS DOESN'T INCREASE EACH TIME CALLED
 void wireguard_tai64n_now(uint8_t *output) {
 	// See https://cr.yp.to/libtai/tai64.html
 	// 64 bit seconds from 1970 = 8 bytes
