@@ -1,0 +1,4 @@
+*.swp
+/example/*/build
+/example/*/sdkconfig
+/example/*/sdkconfig.old
