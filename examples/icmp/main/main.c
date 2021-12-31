@@ -66,7 +66,7 @@ static void wireguard_setup() {
 	// Setup the WireGuard device structure
 	wg.private_key = CONFIG_WG_PRIVATE_KEY;
     wg.listen_port = CONFIG_WG_LOCAL_PORT;
-	
+
 	wg.bind_netif = NULL;
 
 	// Register the new WireGuard network interface with lwIP
