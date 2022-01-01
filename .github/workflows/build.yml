@@ -186,14 +186,6 @@ jobs:
           - idf
           - make
         branch:
-
-          # for supported versions by espressif, see:
-          # https://docs.espressif.com/projects/esp-idf/en/latest/esp32/versions.html
-          #
-          # to build on the following commented-out relases, port all event loop
-          # handling to one with legacy event loop.
-          # - v4.0.4
-          # - v4.1.2
           - v4.2.2
           - v4.3.1
         target:

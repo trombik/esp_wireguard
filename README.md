@@ -11,8 +11,8 @@ for ESP-IDF, based on
 The following ESP-IDF versions are supported:
 
 * `master`
-* `v4.2.2`
-* `v4.3.1`
+* `v4.2.x`
+* `v4.3.x`
 
 The following targets are supported:
 
