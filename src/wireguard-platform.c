@@ -11,9 +11,9 @@ static struct mbedtls_ctr_drbg_context random_context;
 static struct mbedtls_entropy_context entropy_context;
 
 static int entropy_hw_random_source( void *data, unsigned char *output, size_t len, size_t *olen ) {
-    esp_fill_random(output, len);
+	esp_fill_random(output, len);
 	*olen = len;
-    return 0;
+	return 0;
 }
 
 void wireguard_platform_init() {
@@ -24,7 +24,6 @@ void wireguard_platform_init() {
 }
 
 void wireguard_random_bytes(void *bytes, size_t size) {
-	uint8_t *out = (uint8_t *)bytes;
 	mbedtls_ctr_drbg_random(&random_context, bytes, size);
 }
 
@@ -50,4 +49,4 @@ void wireguard_tai64n_now(uint8_t *output) {
 bool wireguard_is_under_load() {
 	return false;
 }
-
+// vim: noexpandtab
