@@ -34,18 +34,25 @@
 
 #include <string.h>
 #include <stdlib.h>
-
-#include "lwip/netif.h"
-#include "lwip/ip.h"
-#include "lwip/udp.h"
-#include "lwip/mem.h"
-#include "lwip/sys.h"
-#include "lwip/timeouts.h"
+#include <lwip/netif.h>
+#include <lwip/ip.h>
+#include <lwip/udp.h>
+#include <lwip/mem.h>
+#include <lwip/sys.h>
+#include <lwip/timeouts.h>
+#include <sys/socket.h>
+#include <esp_log.h>
+#include <esp_err.h>
+#include <esp_netif.h>
 
 #include "wireguard.h"
 #include "crypto.h"
-#include "esp_log.h"
-#include "esp_netif.h"
+
+#ifdef CONFIG_IDF_TARGET_ESP8266
+#define WIREGUARD_ESP_TCPIP_ADAPTER
+#else
+#define WIREGUARD_ESP_NETIF
+#endif
 
 #define WIREGUARDIF_TIMER_MSECS 400
 
@@ -208,10 +215,17 @@ static void wireguardif_send_keepalive(struct wireguard_device *device, struct w
 }
 
 static void wireguardif_process_response_message(struct wireguard_device *device, struct wireguard_peer *peer, struct message_handshake_response *response, const ip_addr_t *addr, u16_t port) {
+	char addr_str[INET_ADDRSTRLEN];
+
 	if (wireguard_process_handshake_response(device, peer, response)) {
 		// Packet is good
 		// Update the peer location
-		ESP_LOGI(TAG, "good handshake from %08x:%d", addr->u_addr.ip4.addr, port);
+		inet_ntop(AF_INET, &(addr->u_addr.ip4.addr), addr_str, INET_ADDRSTRLEN);
+		if (addr_str == NULL) {
+			ESP_LOGE(TAG, "inet_ntop: %d", errno);
+		} else {
+			ESP_LOGI(TAG, "good handshake from %s:%d", addr_str, port);
+		}
 		update_peer_addr(peer, addr, port);
 
 		wireguard_start_session(peer, true);
@@ -221,7 +235,12 @@ static void wireguardif_process_response_message(struct wireguard_device *device
 		netif_set_link_up(device->netif);
 	} else {
 		// Packet bad
-		ESP_LOGI(TAG, "bad handshake from %08x:%d", addr->u_addr.ip4.addr, port);
+		inet_ntop(AF_INET, &(addr->u_addr.ip4.addr), addr_str, INET_ADDRSTRLEN);
+		if (addr_str == NULL) {
+			ESP_LOGE(TAG, "inet_ntop: %d", errno);
+		} else {
+			ESP_LOGI(TAG, "bad handshake from %s:%d", addr_str, port);
+		}
 	}
 }
 
@@ -624,11 +643,28 @@ static err_t wireguard_start_handshake(struct netif *netif, struct wireguard_pee
 	err_t result;
 	struct pbuf *pbuf;
 	struct message_handshake_initiation msg;
+	char addr_str[INET_ADDRSTRLEN];
 
 	pbuf = wireguardif_initiate_handshake(device, peer, &msg, &result);
 	if (pbuf) {
+		inet_ntop(AF_INET, &(peer->ip.u_addr.ip4.addr), addr_str, INET_ADDRSTRLEN);
+		if (addr_str == NULL) {
+			ESP_LOGE(TAG, "inet_ntop: %d", errno);
+		} else {
+			ESP_LOGI(TAG, "start handshake remote %s:%d allowed_ip %s",
+					addr_str,
+					peer->port,
+					CONFIG_WG_LOCAL_IP_ADDRESS
+					);
+		}
 		result = wireguardif_peer_output(netif, pbuf, peer);
-		ESP_LOGI(TAG, "start handshake %08x,%d - %d", peer->ip.u_addr.ip4.addr, peer->port, result);
+		if (result != ERR_OK) {
+#ifdef CONFIG_LWIP_DEBUG
+			ESP_LOGE(TAG, "wireguardif_peer_output: %s", lwip_strerr(result));
+#else
+			ESP_LOGE(TAG, "wireguardif_peer_output: %d", result);
+#endif
+		}
 		pbuf_free(pbuf);
 		peer->send_handshake = false;
 		peer->last_initiation_tx = wireguard_sys_now();
@@ -848,7 +884,7 @@ static void wireguardif_tmr(void *arg) {
 	int x;
 	// Reschedule this timer
 	sys_timeout(WIREGUARDIF_TIMER_MSECS, wireguardif_tmr, device);
-	
+
 	// Check periodic things
 	bool link_up = false;
 	for (x=0; x < WIREGUARD_MAX_PEERS; x++) {
@@ -892,17 +928,38 @@ static void wireguardif_tmr(void *arg) {
 
 err_t wireguardif_init(struct netif *netif) {
 	err_t result;
+	esp_err_t err;
 	struct wireguardif_init_data *init_data;
 	struct wireguard_device *device;
 	struct udp_pcb *udp;
 	uint8_t private_key[WIREGUARD_PRIVATE_KEY_LEN];
 	size_t private_key_len = sizeof(private_key);
 
+#if defined(WIREGUARD_ESP_NETIF)
+	struct netif* underlying_netif = NULL;
 	char lwip_netif_name[8] = {0,};
-	esp_netif_get_netif_impl_name( esp_netif_get_handle_from_ifkey("WIFI_STA_DEF"), lwip_netif_name);
-	ESP_LOGI(TAG, "WIFI NETIF: %s", lwip_netif_name);
 
-	struct netif* underlying_netif = netif_find(lwip_netif_name);
+	err = esp_netif_get_netif_impl_name(esp_netif_get_handle_from_ifkey("WIFI_STA_DEF"), lwip_netif_name);
+	if (err != ESP_OK) {
+		ESP_LOGE(TAG, "esp_netif_get_netif_impl_name: %s", esp_err_to_name(err));
+		result = ERR_IF;
+		goto fail;
+	}
+	underlying_netif = netif_find(lwip_netif_name);
+	if (underlying_netif == NULL) {
+		ESP_LOGE(TAG, "netif_find: cannot find WIFI_STA_DEF");
+		result = ERR_IF;
+		goto fail;
+	}
+#elif defined(WIREGUARD_ESP_TCPIP_ADAPTER)
+	void *underlying_netif = NULL;
+	err = tcpip_adapter_get_netif(TCPIP_ADAPTER_IF_STA, &underlying_netif);
+	if (err != ESP_OK) {
+		ESP_LOGE(TAG, "tcpip_adapter_get_netif: %s", esp_err_to_name(err));
+		result = ERR_IF;
+		goto fail;
+	}
+#endif
 	ESP_LOGI(TAG, "underlying_netif = %p", underlying_netif);
 
 	LWIP_ASSERT("netif != NULL", (netif != NULL));
@@ -983,6 +1040,7 @@ err_t wireguardif_init(struct netif *netif) {
 	} else {
 		result = ERR_ARG;
 	}
+fail:
 	return result;
 }
 
@@ -999,3 +1057,4 @@ void wireguardif_peer_init(struct wireguardif_peer *peer) {
 	memset(peer->greatest_timestamp, 0, sizeof(peer->greatest_timestamp));
 	peer->preshared_key = NULL;
 }
+// vim: noexpandtab
