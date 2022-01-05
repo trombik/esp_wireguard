@@ -60,4 +60,9 @@ menu "Example Configuration"
         default 12912
         help
             Port number of the remote peer.
+    config EXAMPLE_PING_ADDRESS
+        string "Target IP address or name"
+        default "192.168.4.1"
+        help
+            Target IP address to send ICMP echo requests.
 endmenu
