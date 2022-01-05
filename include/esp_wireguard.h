@@ -54,6 +54,7 @@ typedef struct {
 typedef struct {
     wireguard_config_t* config;        /**< a pointer to wireguard config */
     struct netif*       netif;         /**< a pointer to configured netif */
+    struct netif*       netif_default; /**< a pointer to the default netif. */
 } wireguard_ctx_t;
 
 /**
@@ -89,6 +90,13 @@ void esp_wireguard_set_default(wireguard_ctx_t *ctx);
  * @brief Test if the peer is up.
  */
 esp_err_t esp_wireguardif_peer_is_up(wireguard_ctx_t *ctx);
+
+/**
+ * @brief Disconnect from the peer
+ *
+ * @param ctx Context of WireGuard.
+ */
+void esp_wireguard_disconnect(wireguard_ctx_t *ctx);
 
 #endif
 // vim: expandtab

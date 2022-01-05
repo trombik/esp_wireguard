@@ -156,6 +156,7 @@ esp_err_t esp_wireguard_init(wireguard_config_t *config, wireguard_ctx_t *ctx)
     }
     ctx->config = config;
     ctx->netif = wg_netif;
+    ctx->netif_default = netif_default;
 
     err = ESP_OK;
 fail:
@@ -182,6 +183,28 @@ fail:
 void esp_wireguard_set_default(wireguard_ctx_t *ctx)
 {
     netif_set_default(ctx->netif);
+}
+
+void esp_wireguard_disconnect(wireguard_ctx_t *ctx)
+{
+    err_t lwip_err;
+
+    netif_set_default(ctx->netif_default);
+
+    lwip_err = wireguardif_disconnect(ctx->netif, wireguard_peer_index);
+    if (lwip_err != ERR_OK) {
+        ESP_LOGW(TAG, "wireguardif_disconnect: peer_index: %d err: %d", wireguard_peer_index, lwip_err);
+    }
+
+    lwip_err = wireguardif_remove_peer(ctx->netif, wireguard_peer_index);
+    if (lwip_err != ERR_OK) {
+        ESP_LOGW(TAG, "wireguardif_remove_peer: peer_index: %d err: %d", wireguard_peer_index, lwip_err);
+    }
+
+    wireguard_peer_index = WIREGUARDIF_INVALID_INDEX;
+    wireguardif_shutdown(ctx->netif);
+    netif_remove(ctx->netif);
+    ctx->netif = NULL;
 }
 
 esp_err_t esp_wireguardif_peer_is_up(wireguard_ctx_t *ctx)
