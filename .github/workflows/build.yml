@@ -793,7 +793,6 @@ jobs:
       - build_esp32_v4_x
       - build_esp32_v3_x
       - build_esp8266
-      - build_esp8266_v3_3_x
       - build_esp32s2_v4_x
     steps:
       - name:
