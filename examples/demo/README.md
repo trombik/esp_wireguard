@@ -2,7 +2,8 @@
 
 ## What the example does
 
-The example connects to a WireGuard server.
+The example connects to a WireGuard server. When the link is up, the device
+sends ICMP echo requests, shows ping statistics, and loops forever.
 
 ## Requirements
 
