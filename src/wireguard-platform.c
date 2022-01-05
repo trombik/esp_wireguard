@@ -1,11 +1,20 @@
 #include "wireguard-platform.h"
 
 #include <stdlib.h>
+#include <lwip/sys.h>
+#include <mbedtls/entropy.h>
+#include <mbedtls/ctr_drbg.h>
+#include <esp_system.h>
+#include <esp_err.h>
+#include <esp_log.h>
+
 #include "crypto.h"
-#include "lwip/sys.h"
-#include "mbedtls/entropy.h"
-#include "mbedtls/ctr_drbg.h"
-#include "esp_system.h"
+
+#define ENTROPY_MINIMUM_REQUIRED_THRESHOLD	(134)
+#define ENTROPY_FUNCTION_DATA	NULL
+#define ENTROPY_CUSTOM_DATA		NULL
+#define ENTROPY_CUSTOM_DATA_LENGTH (0)
+#define TAG "wireguard-platform"
 
 static struct mbedtls_ctr_drbg_context random_context;
 static struct mbedtls_entropy_context entropy_context;
@@ -16,11 +25,37 @@ static int entropy_hw_random_source( void *data, unsigned char *output, size_t l
 	return 0;
 }
 
-void wireguard_platform_init() {
+esp_err_t wireguard_platform_init() {
+	int mbedtls_err;
+	esp_err_t err;
+
 	mbedtls_entropy_init(&entropy_context);
 	mbedtls_ctr_drbg_init(&random_context);
-	mbedtls_entropy_add_source(&entropy_context, entropy_hw_random_source, NULL, 134, MBEDTLS_ENTROPY_SOURCE_STRONG);
-	mbedtls_ctr_drbg_seed(&random_context, mbedtls_entropy_func, &entropy_context, NULL, 0);
+	mbedtls_err = mbedtls_entropy_add_source(
+			&entropy_context,
+			entropy_hw_random_source,
+			ENTROPY_FUNCTION_DATA,
+			ENTROPY_MINIMUM_REQUIRED_THRESHOLD,
+			MBEDTLS_ENTROPY_SOURCE_STRONG);
+	if (mbedtls_err != 0) {
+		ESP_LOGE(TAG, "mbedtls_entropy_add_source: %d", mbedtls_err);
+		err = ESP_FAIL;
+		goto fail;
+	}
+	mbedtls_err = mbedtls_ctr_drbg_seed(
+			&random_context,
+			mbedtls_entropy_func,
+			&entropy_context,
+			ENTROPY_CUSTOM_DATA,
+			ENTROPY_CUSTOM_DATA_LENGTH);
+	if (mbedtls_err != 0) {
+		ESP_LOGE(TAG, "mbedtls_ctr_drbg_seed: %d", mbedtls_err);
+		err = ESP_FAIL;
+		goto fail;
+	}
+	err = ESP_OK;
+fail:
+	return err;
 }
 
 void wireguard_random_bytes(void *bytes, size_t size) {
