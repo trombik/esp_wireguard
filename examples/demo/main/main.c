@@ -358,7 +358,11 @@ void app_main(void)
     */
 
     err = nvs_flash_init();
+#if defined(CONFIG_IDF_TARGET_ESP8266) && ESP_IDF_VERSION <= ESP_IDF_VERSION_VAL(3, 4, 0)
+    if (err == ESP_ERR_NVS_NO_FREE_PAGES) {
+#else
     if (err == ESP_ERR_NVS_NO_FREE_PAGES || err == ESP_ERR_NVS_NEW_VERSION_FOUND) {
+#endif
       ESP_ERROR_CHECK(nvs_flash_erase());
       err = nvs_flash_init();
     }
