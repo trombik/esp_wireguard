@@ -324,13 +324,7 @@ void start_ping()
     struct in_addr addr4 = ((struct sockaddr_in *) (res->ai_addr))->sin_addr;
     inet_addr_to_ip4addr(ip_2_ip4(&target_addr), &addr4);
     lwip_freeaddrinfo(res);
-    ESP_LOGI(TAG, "ICMP echo target: %s (%d.%d.%d.%d)"
-        , CONFIG_EXAMPLE_PING_ADDRESS
-        , (target_addr.u_addr.ip4.addr >>  0) & 0xff
-        , (target_addr.u_addr.ip4.addr >>  8) & 0xff
-        , (target_addr.u_addr.ip4.addr >> 16) & 0xff
-        , (target_addr.u_addr.ip4.addr >> 24) & 0xff
-        );
+    ESP_LOGI(TAG, "ICMP echo target: %s", CONFIG_EXAMPLE_PING_ADDRESS);
     esp_ping_config_t ping_config = ESP_PING_DEFAULT_CONFIG();
     ping_config.target_addr = target_addr;          // target IP address
     ping_config.count = ESP_PING_COUNT_INFINITE;    // ping in infinite mode, esp_ping_stop can stop it
