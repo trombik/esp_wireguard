@@ -6,6 +6,12 @@ for ESP-IDF, based on
 
 [![Build examples](https://github.com/trombik/esp_wireguard/actions/workflows/build.yml/badge.svg)](https://github.com/trombik/esp_wireguard/actions/workflows/build.yml)
 
+## Status
+
+The code is alpha.
+
+A single tunnel to a WireGuard peer has been working.
+
 ## Supported ESP-IDF versions and targets
 
 The following ESP-IDF versions are supported:
