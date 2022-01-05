@@ -1,4 +1,4 @@
-/* WiFi station Example
+/* WireGuard demo example
 
    This example code is in the Public Domain (or CC0 licensed, at your option.)
 
@@ -9,7 +9,6 @@
 #include <string.h>
 #include <time.h>
 #include <sys/time.h>
-
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
 #include <freertos/event_groups.h>
@@ -19,13 +18,8 @@
 #include <esp_event.h>
 #include <esp_log.h>
 #include <nvs_flash.h>
-#include <lwip/err.h>
-#include <lwip/sys.h>
-#include <lwip/ip.h>
-#include <lwip/netdb.h>
+#include <esp_wireguard.h>
 
-#include <wireguardif.h>
-#include <wireguard-platform.h>
 #include "sync_time.h"
 
 #define EXAMPLE_ESP_WIFI_SSID	   CONFIG_ESP_WIFI_SSID
@@ -50,104 +44,37 @@ static EventGroupHandle_t s_wifi_event_group;
 static const char *TAG = "demo";
 static int s_retry_num = 0;
 
-// Wireguard instance
-static struct netif wg_netif_struct = {0};
-static struct netif *wg_netif = NULL;
-static uint8_t wireguard_peer_index = WIREGUARDIF_INVALID_INDEX;
-
-static esp_err_t wireguard_setup(struct wireguardif_peer *peer)
+static esp_err_t wireguard_setup(wireguard_ctx_t* ctx)
 {
 	esp_err_t err = ESP_FAIL;
-	err_t result = ERR_OK;
 
-	struct wireguardif_init_data wg;
-	ip_addr_t ipaddr;
-	ip_addr_t netmask;
-	ip_addr_t gateway = IPADDR4_INIT_BYTES(0, 0, 0, 0);
+    wireguard_config_t wg_config = {
+        .private_key = CONFIG_WG_PRIVATE_KEY,
+        .listen_port = CONFIG_WG_LOCAL_PORT,
+        .fw_mark = 0,
+        .public_key = CONFIG_WG_PEER_PUBLIC_KEY,
+        .preshared_key = NULL,
+        .allowed_ip = CONFIG_WG_LOCAL_IP_ADDRESS,
+        .allowed_ip_mask = CONFIG_WG_LOCAL_IP_NETMASK,
+        .endpoint = CONFIG_WG_PEER_ADDRESS,
+        .port = CONFIG_WG_PEER_PORT,
+        .persistent_keepalive = 0,
+    };
 
-	ESP_ERROR_CHECK(ipaddr_aton(CONFIG_WG_LOCAL_IP_ADDRESS, &ipaddr) != 0 ? ESP_OK : ESP_FAIL);
-	ESP_ERROR_CHECK(ipaddr_aton(CONFIG_WG_LOCAL_IP_NETMASK, &netmask) != 0 ? ESP_OK : ESP_FAIL);
-	if (peer == NULL) {
-		err = ESP_ERR_INVALID_ARG;
-		goto fail;
-	}
+    ESP_LOGI(TAG, "Initializing WireGuard.");
+    err = esp_wireguard_init(&wg_config, ctx);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "esp_wireguard_init: %s", esp_err_to_name(err));
+        goto fail;
+    }
 
-	// Setup the WireGuard device structure
-	wg.private_key = CONFIG_WG_PRIVATE_KEY;
-	wg.listen_port = CONFIG_WG_LOCAL_PORT;
+    ESP_LOGI(TAG, "Connecting to the peer.");
+    err = esp_wireguard_connect(ctx);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "esp_wireguard_connect: %s", esp_err_to_name(err));
+        goto fail;
+    }
 
-	wg.bind_netif = NULL;
-
-	// Initialize the platform
-	wireguard_platform_init();
-
-	// Register the new WireGuard network interface with lwIP
-	wg_netif = netif_add(&wg_netif_struct, ip_2_ip4(&ipaddr), ip_2_ip4(&netmask), ip_2_ip4(&gateway), &wg, &wireguardif_init, &ip_input);
-	assert(wg_netif);
-
-	// Mark the interface as administratively up, link up flag is set automatically when peer connects
-	netif_set_up(wg_netif);
-
-	// Initialise the first WireGuard peer structure
-	wireguardif_peer_init(peer);
-	peer->public_key = CONFIG_WG_PEER_PUBLIC_KEY;
-	peer->preshared_key = NULL;
-	// Allow all IPs through tunnel
-	{
-		ip_addr_t allowed_ip = IPADDR4_INIT_BYTES(0, 0, 0, 0);
-		peer->allowed_ip = allowed_ip;
-		ip_addr_t allowed_mask = IPADDR4_INIT_BYTES(0, 0, 0, 0);
-		peer->allowed_mask = allowed_mask;
-	}
-	// If we know the endpoint's address can add here
-	{
-		ip_addr_t endpoint_ip = IPADDR4_INIT_BYTES(0, 0, 0, 0);
-		struct addrinfo *res = NULL;
-		struct addrinfo hint;
-		memset(&hint, 0, sizeof(hint));
-		memset(&endpoint_ip, 0, sizeof(endpoint_ip));
-		ESP_ERROR_CHECK(lwip_getaddrinfo(CONFIG_WG_PEER_ADDRESS, NULL, &hint, &res) == 0 ? ESP_OK : ESP_FAIL);
-		struct in_addr addr4 = ((struct sockaddr_in *) (res->ai_addr))->sin_addr;
-		inet_addr_to_ip4addr(ip_2_ip4(&endpoint_ip), &addr4);
-		lwip_freeaddrinfo(res);
-
-		peer->endpoint_ip = endpoint_ip;
-		ESP_LOGI(TAG, "Peer: %s (%d.%d.%d.%d:%d)"
-			, CONFIG_WG_PEER_ADDRESS
-			, (endpoint_ip.u_addr.ip4.addr >>  0) & 0xff
-			, (endpoint_ip.u_addr.ip4.addr >>  8) & 0xff
-			, (endpoint_ip.u_addr.ip4.addr >> 16) & 0xff
-			, (endpoint_ip.u_addr.ip4.addr >> 24) & 0xff
-			, CONFIG_WG_PEER_PORT
-			);
-	}
-	peer->endport_port = CONFIG_WG_PEER_PORT;
-
-	// Register the new WireGuard peer with the netwok interface
-	result = wireguardif_add_peer(wg_netif, peer, &wireguard_peer_index);
-	if (result != ERR_OK) {
-		ESP_LOGE(TAG, "wireguardif_add_peer: %d", result);
-		goto fail;
-	}
-	if (wireguard_peer_index == WIREGUARDIF_INVALID_INDEX) {
-		ESP_LOGE(TAG, "wireguard_peer_index is invalid");
-		err = ESP_FAIL;
-		goto fail;
-	}
-	if (ip_addr_isany(&peer->endpoint_ip)) {
-		ESP_LOGE(TAG, "peer->endpoint_ip is invalid");
-		err = ESP_FAIL;
-		goto fail;
-	}
-	// Start outbound connection to peer
-	ESP_LOGI(TAG, "connecting wireguard...");
-	result = wireguardif_connect(wg_netif, wireguard_peer_index);
-	if (result != ERR_OK) {
-		ESP_LOGE(TAG, "netif_set_default: %d", result);
-		err = ESP_FAIL;
-		goto fail;
-	}
-	netif_set_default(wg_netif);
 	err = ESP_OK;
 fail:
 	return err;
@@ -348,9 +275,12 @@ void app_main(void)
     time_t now;
     struct tm timeinfo;
     char strftime_buf[64];
+    wireguard_ctx_t ctx;
 
+    /*
 	struct wireguardif_peer peer;
 	memset(&peer, 0, sizeof(peer));
+    */
 
 	err = nvs_flash_init();
 	if (err == ESP_ERR_NVS_NO_FREE_PAGES || err == ESP_ERR_NVS_NEW_VERSION_FOUND) {
@@ -374,7 +304,7 @@ void app_main(void)
     strftime(strftime_buf, sizeof(strftime_buf), "%c", &timeinfo);
     ESP_LOGI(TAG, "The current date/time in New York is: %s", strftime_buf);
 
-	err = wireguard_setup(&peer);
+	err = wireguard_setup(&ctx);
 	if (err != ESP_OK) {
 		ESP_LOGE(TAG, "wireguard_setup: %s", esp_err_to_name(err));
 		goto fail;
@@ -382,8 +312,8 @@ void app_main(void)
 
 	while (1) {
 		vTaskDelay(1000 / portTICK_RATE_MS);
-		err = wireguardif_peer_is_up(wg_netif, wireguard_peer_index, &peer.endpoint_ip, &peer.endport_port);
-		ESP_LOGI(TAG, "Peer is %s", err == ERR_OK ? "up" : "down");
+		err = esp_wireguardif_peer_is_up(&ctx);
+		ESP_LOGI(TAG, "Peer is %s", err == ESP_OK ? "up" : "down");
 	}
 
 fail:
