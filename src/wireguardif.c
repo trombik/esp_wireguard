@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2021 Daniel Hope (www.floorsense.nz)
+ * Copyright (c) 2021 Kenta Ida (fuga@fugafuga.org)
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without modification,
@@ -1056,5 +1057,23 @@ void wireguardif_peer_init(struct wireguardif_peer *peer) {
 	ip_addr_set_any(false, &peer->allowed_mask);
 	memset(peer->greatest_timestamp, 0, sizeof(peer->greatest_timestamp));
 	peer->preshared_key = NULL;
+}
+
+void wireguardif_shutdown(struct netif *netif) {
+	LWIP_ASSERT("netif != NULL", (netif != NULL));
+	LWIP_ASSERT("state != NULL", (netif->state != NULL));
+
+	struct wireguard_device *device = (struct wireguard_device *)netif->state;
+	// Disable timer.
+	sys_untimeout(wireguardif_tmr, device);
+	// remove UDP context.
+	if (device->udp_pcb) {
+		udp_disconnect(device->udp_pcb);
+		udp_remove(device->udp_pcb);
+		device->udp_pcb = NULL;
+	}
+	// remove device context.
+	free(device);
+	netif->state = NULL;
 }
 // vim: noexpandtab
