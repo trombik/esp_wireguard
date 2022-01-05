@@ -12,16 +12,16 @@
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
 #include <freertos/event_groups.h>
+#include <esp_event.h>
+#include <esp_idf_version.h>
+#include <esp_log.h>
 #include <esp_system.h>
 #include <esp_wifi.h>
-#include <esp_netif.h>
-#include <esp_event.h>
-#include <esp_log.h>
 #include <nvs_flash.h>
-#include <esp_wireguard.h>
 #include <lwip/netdb.h>
 #include <ping/ping_sock.h>
 
+#include <esp_wireguard.h>
 #include "sync_time.h"
 
 #define EXAMPLE_ESP_WIFI_SSID      CONFIG_ESP_WIFI_SSID
@@ -30,10 +30,13 @@
 
 #if defined(CONFIG_IDF_TARGET_ESP8266)
 #define EXAMPLE_TCPIP_ADAPTER
-#elif IDF_VERSION_MAJOR == 4 && IDF_VERSION_MINOR == 1
+#include <esp_netif.h>
+#elif ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(4, 2, 0)
 #define EXAMPLE_TCPIP_ADAPTER
+#include <tcpip_adapter.h>
 #else
 #define EXAMPLE_NETIF
+#include <esp_netif.h>
 #endif
 
 /* FreeRTOS event group to signal when we are connected*/
