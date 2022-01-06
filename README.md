@@ -41,6 +41,9 @@ The implementation uses `LwIP` as TCP/IP protocol stack.
 
 IPv6 support is not tested.
 
+The library assumes the interface is WiFi interface. Ethernet is not
+supported.
+
 ## License
 
 BSD 3-Clause "New" or "Revised" License (SPDX ID: BSD-3-Clause).
