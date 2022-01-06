@@ -136,7 +136,6 @@ static err_t wireguardif_output_to_peer(struct netif *netif, struct pbuf *q, con
 			// The IP packet consists of 16 byte header (struct message_transport_data), data padded upto 16 byte boundary + encrypted auth tag (16 bytes)
 			pbuf = pbuf_alloc(PBUF_TRANSPORT, header_len + padded_len + WIREGUARD_AUTHTAG_LEN, PBUF_RAM);
 			if (pbuf) {
-				ESP_LOGI(TAG, "preparing transport data...");
 				// Note: allocating pbuf from RAM above guarantees that the pbuf is in one section and not chained
 				// - i.e payload points to the contiguous memory region
 				memset(pbuf->payload, 0, pbuf->tot_len);
@@ -216,17 +215,9 @@ static void wireguardif_send_keepalive(struct wireguard_device *device, struct w
 }
 
 static void wireguardif_process_response_message(struct wireguard_device *device, struct wireguard_peer *peer, struct message_handshake_response *response, const ip_addr_t *addr, u16_t port) {
-	char addr_str[INET_ADDRSTRLEN];
-
 	if (wireguard_process_handshake_response(device, peer, response)) {
 		// Packet is good
 		// Update the peer location
-		inet_ntop(AF_INET, &(addr->u_addr.ip4.addr), addr_str, INET_ADDRSTRLEN);
-		if (addr_str == NULL) {
-			ESP_LOGE(TAG, "inet_ntop: %d", errno);
-		} else {
-			ESP_LOGI(TAG, "good handshake from %s:%d", addr_str, port);
-		}
 		update_peer_addr(peer, addr, port);
 
 		wireguard_start_session(peer, true);
@@ -236,12 +227,6 @@ static void wireguardif_process_response_message(struct wireguard_device *device
 		netif_set_link_up(device->netif);
 	} else {
 		// Packet bad
-		inet_ntop(AF_INET, &(addr->u_addr.ip4.addr), addr_str, INET_ADDRSTRLEN);
-		if (addr_str == NULL) {
-			ESP_LOGE(TAG, "inet_ntop: %d", errno);
-		} else {
-			ESP_LOGI(TAG, "bad handshake from %s:%d", addr_str, port);
-		}
 	}
 }
 
@@ -571,12 +556,10 @@ void wireguardif_network_rx(void *arg, struct udp_pcb *pcb, struct pbuf *p, cons
 	struct message_transport_data *msg_data;
 
 	uint8_t type = wireguard_get_message_type(data, len);
-	ESP_LOGV(TAG, "network_rx: %08x:%d", addr->u_addr.ip4.addr, port);
 
 	switch (type) {
 		case MESSAGE_HANDSHAKE_INITIATION:
 			msg_initiation = (struct message_handshake_initiation *)data;
-			ESP_LOGI(TAG, "HANDSHAKE_INITIATION: %08x:%d", addr->u_addr.ip4.addr, port);
 			// Check mac1 (and optionally mac2) are correct - note it may internally generate a cookie reply packet
 			if (wireguardif_check_initiation_message(device, msg_initiation, addr, port)) {
 
@@ -592,7 +575,6 @@ void wireguardif_network_rx(void *arg, struct udp_pcb *pcb, struct pbuf *p, cons
 			break;
 
 		case MESSAGE_HANDSHAKE_RESPONSE:
-			ESP_LOGI(TAG, "HANDSHAKE_RESPONSE: %08x:%d", addr->u_addr.ip4.addr, port);
 			msg_response = (struct message_handshake_response *)data;
 
 			// Check mac1 (and optionally mac2) are correct - note it may internally generate a cookie reply packet
@@ -607,7 +589,6 @@ void wireguardif_network_rx(void *arg, struct udp_pcb *pcb, struct pbuf *p, cons
 			break;
 
 		case MESSAGE_COOKIE_REPLY:
-			ESP_LOGI(TAG, "COOKIE_REPLY: %08x:%d", addr->u_addr.ip4.addr, port);
 			msg_cookie = (struct message_cookie_reply *)data;
 			peer = peer_lookup_by_handshake(device, msg_cookie->receiver);
 			if (peer) {
@@ -621,8 +602,6 @@ void wireguardif_network_rx(void *arg, struct udp_pcb *pcb, struct pbuf *p, cons
 			break;
 
 		case MESSAGE_TRANSPORT_DATA:
-			ESP_LOGV(TAG, "TRANSPORT_DATA: %08x:%d", addr->u_addr.ip4.addr, port);
-
 			msg_data = (struct message_transport_data *)data;
 			peer = peer_lookup_by_receiver(device, msg_data->receiver);
 			if (peer) {
@@ -644,20 +623,9 @@ static err_t wireguard_start_handshake(struct netif *netif, struct wireguard_pee
 	err_t result;
 	struct pbuf *pbuf;
 	struct message_handshake_initiation msg;
-	char addr_str[INET_ADDRSTRLEN];
 
 	pbuf = wireguardif_initiate_handshake(device, peer, &msg, &result);
 	if (pbuf) {
-		inet_ntop(AF_INET, &(peer->ip.u_addr.ip4.addr), addr_str, INET_ADDRSTRLEN);
-		if (addr_str == NULL) {
-			ESP_LOGE(TAG, "inet_ntop: %d", errno);
-		} else {
-			ESP_LOGI(TAG, "start handshake remote %s:%d allowed_ip %s",
-					addr_str,
-					peer->port,
-					CONFIG_WG_LOCAL_IP_ADDRESS
-					);
-		}
 		result = wireguardif_peer_output(netif, pbuf, peer);
 		if (result != ERR_OK) {
 #ifdef CONFIG_LWIP_DEBUG
