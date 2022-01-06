@@ -923,7 +923,7 @@ err_t wireguardif_init(struct netif *netif) {
 		goto fail;
 	}
 #endif
-	ESP_LOGI(TAG, "underlying_netif = %p", underlying_netif);
+	ESP_LOGD(TAG, "underlying_netif = %p", underlying_netif);
 
 	LWIP_ASSERT("netif != NULL", (netif != NULL));
 	LWIP_ASSERT("state != NULL", (netif->state != NULL));
