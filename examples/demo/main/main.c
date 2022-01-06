@@ -346,10 +346,7 @@ void app_main(void)
     char strftime_buf[64];
     wireguard_ctx_t ctx;
 
-    /*
-    struct wireguardif_peer peer;
-    memset(&peer, 0, sizeof(peer));
-    */
+    memset(&ctx, 0, sizeof(wireguard_ctx_t)); 
 
     err = nvs_flash_init();
 #if defined(CONFIG_IDF_TARGET_ESP8266) && ESP_IDF_VERSION <= ESP_IDF_VERSION_VAL(3, 4, 0)
