@@ -44,6 +44,9 @@ IPv6 support is not tested.
 The library assumes the interface is WiFi interface. Ethernet is not
 supported.
 
+Older `esp-idf` versions with `TCP/IP Adapter`, such as v4.1.x, should work,
+but there are others issues, not directly related to the library.
+
 ## License
 
 BSD 3-Clause "New" or "Revised" License (SPDX ID: BSD-3-Clause).
