@@ -504,6 +504,10 @@ jobs:
           for i in $(ls -d *); do
             if [ ! -e "${__PROJECT_EXAMPLE_DIR}/${i}/${IGNORE_FILE}" ]; then
               cd "${__PROJECT_EXAMPLE_DIR}/${i}"
+              # XXX ESP8266 RTOS SDK does not support
+              # `sdkconfig.defaults.TARGET_NAME` yet. create
+              # sdkconfig.defaults for ESP8266
+              echo "CONFIG_WIREGUARD_ESP_TCPIP_ADAPTER=y" >> sdkconfig.defaults
               echo "Building ${i}..."
               make defconfig
               make -j$(nproc)

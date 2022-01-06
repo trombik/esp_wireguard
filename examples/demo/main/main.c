@@ -29,13 +29,10 @@
 #define EXAMPLE_ESP_MAXIMUM_RETRY  CONFIG_ESP_MAXIMUM_RETRY
 
 #if defined(CONFIG_IDF_TARGET_ESP8266)
-#define EXAMPLE_TCPIP_ADAPTER
 #include <esp_netif.h>
 #elif ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(4, 2, 0)
-#define EXAMPLE_TCPIP_ADAPTER
 #include <tcpip_adapter.h>
 #else
-#define EXAMPLE_NETIF
 #include <esp_netif.h>
 #endif
 
@@ -109,7 +106,7 @@ static void event_handler(void* arg, esp_event_base_t event_base,
     }
 }
 
-#ifdef EXAMPLE_TCPIP_ADAPTER
+#ifdef CONFIG_WIREGUARD_ESP_TCPIP_ADAPTER
 static esp_err_t wifi_init_tcpip_adaptor(void)
 {
     esp_err_t err = ESP_FAIL;
@@ -176,9 +173,9 @@ static esp_err_t wifi_init_tcpip_adaptor(void)
 fail:
     return err;
 }
-#endif // EXAMPLE_TCPIP_ADAPTER
+#endif // CONFIG_WIREGUARD_ESP_TCPIP_ADAPTER
 
-#ifdef EXAMPLE_NETIF
+#ifdef CONFIG_WIREGUARD_ESP_NETIF
 static esp_err_t wifi_init_netif(void)
 {
     esp_err_t err = ESP_FAIL;
@@ -264,14 +261,14 @@ static esp_err_t wifi_init_netif(void)
 fail:
     return err;
 }
-#endif // EXAMPLE_NETIF
+#endif // CONFIG_WIREGUARD_ESP_NETIF
 
 static esp_err_t wifi_init_sta(void)
 {
-#ifdef EXAMPLE_TCPIP_ADAPTER
+#if defined(CONFIG_WIREGUARD_ESP_TCPIP_ADAPTER)
     return wifi_init_tcpip_adaptor();
 #endif
-#if defined(EXAMPLE_NETIF)
+#if defined(CONFIG_WIREGUARD_ESP_NETIF)
     return wifi_init_netif();
 #endif
 }

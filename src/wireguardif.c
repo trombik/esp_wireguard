@@ -49,12 +49,6 @@
 #include "wireguard.h"
 #include "crypto.h"
 
-#ifdef CONFIG_IDF_TARGET_ESP8266
-#define WIREGUARD_ESP_TCPIP_ADAPTER
-#else
-#define WIREGUARD_ESP_NETIF
-#endif
-
 #define WIREGUARDIF_TIMER_MSECS 400
 
 #define TAG "wireguard"
@@ -904,7 +898,7 @@ err_t wireguardif_init(struct netif *netif) {
 	uint8_t private_key[WIREGUARD_PRIVATE_KEY_LEN];
 	size_t private_key_len = sizeof(private_key);
 
-#if defined(WIREGUARD_ESP_NETIF)
+#if defined(CONFIG_WIREGUARD_ESP_NETIF)
 	struct netif* underlying_netif = NULL;
 	char lwip_netif_name[8] = {0,};
 
@@ -920,7 +914,7 @@ err_t wireguardif_init(struct netif *netif) {
 		result = ERR_IF;
 		goto fail;
 	}
-#elif defined(WIREGUARD_ESP_TCPIP_ADAPTER)
+#elif defined(CONFIG_WIREGUARD_ESP_TCPIP_ADAPTER)
 	void *underlying_netif = NULL;
 	err = tcpip_adapter_get_netif(TCPIP_ADAPTER_IF_STA, &underlying_netif);
 	if (err != ESP_OK) {
