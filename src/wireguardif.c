@@ -784,7 +784,7 @@ err_t wireguardif_add_peer(struct netif *netif, struct wireguardif_peer *p, u8_t
 	}
 
 	uint32_t t2 = wireguard_sys_now();
-	printf("Adding peer took %ums\r\n", (t2-t1));
+	ESP_LOGD(TAG, "Adding peer took %ums", (t2-t1));
 
 	if (peer_index) {
 		if (peer) {
@@ -958,7 +958,7 @@ err_t wireguardif_init(struct netif *netif) {
 						uint32_t t1 = wireguard_sys_now();
 						if (wireguard_device_init(device, private_key)) {
 							uint32_t t2 = wireguard_sys_now();
-							printf("Device init took %ums\r\n", (t2-t1));
+							ESP_LOGD(TAG, "Device init took %ums", (t2-t1));
 
 #if LWIP_CHECKSUM_CTRL_PER_NETIF
 							NETIF_SET_CHECKSUM_CTRL(netif, NETIF_CHECKSUM_ENABLE_ALL);
