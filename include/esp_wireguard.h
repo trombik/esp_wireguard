@@ -33,6 +33,7 @@
 
 #include <stdint.h>
 #include <esp_err.h>
+#include <lwip/netif.h>
 
 typedef struct {
     /* interface config */
@@ -58,7 +59,7 @@ typedef struct {
 } wireguard_ctx_t;
 
 /**
- * @brief Initialize WireGuard interface.
+ * @brief Initialize WireGuard
  *
  * @param       config WireGuard configuration.
  * @param[out]  ctx Context of WireGuard.
@@ -71,7 +72,8 @@ typedef struct {
 esp_err_t esp_wireguard_init(wireguard_config_t *config, wireguard_ctx_t *ctx);
 
 /**
- * @brief Start the connection to the peer.
+ * @brief Create a WireGuard interface and establish the connection to the
+ *        peer.
  *
  * @param       ctx Context of WireGuard.
  * @return
