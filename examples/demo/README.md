@@ -10,7 +10,7 @@ The main task then disconnects from the peer, and re-connects to the peer.
 
 ## Requirements
 
-* An ESP32 development board
+* An ESP32 or ESP8266 development board
 * WiFi network
 * [`wireguard-tools`](https://github.com/WireGuard/wireguard-tools)
 * A WireGuard server
