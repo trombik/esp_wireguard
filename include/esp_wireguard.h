@@ -85,8 +85,10 @@ esp_err_t esp_wireguard_connect(wireguard_ctx_t *ctx);
 /**
  * @brief Set the default gateway to the peer.
  * @param ctx Context of WireGuard
+ * @return
+ *      - ESP_OK on success.
  */
-void esp_wireguard_set_default(wireguard_ctx_t *ctx);
+esp_err_t esp_wireguard_set_default(wireguard_ctx_t *ctx);
 
 /**
  * @brief Test if the peer is up.
@@ -97,8 +99,10 @@ esp_err_t esp_wireguardif_peer_is_up(wireguard_ctx_t *ctx);
  * @brief Disconnect from the peer
  *
  * @param ctx Context of WireGuard.
+ * @return
+ *      - ESP_OK on success.
  */
-void esp_wireguard_disconnect(wireguard_ctx_t *ctx);
+esp_err_t esp_wireguard_disconnect(wireguard_ctx_t *ctx);
 
 #endif
 // vim: expandtab
