@@ -43,6 +43,8 @@ Pass the variables to `esp_wireguard_init()`. Then, call
 from the peer (and destroy the WireGuard interface).
 
 ```c
+#include <esp_wireguard.h>
+
 esp_err_t err = ESP_FAIL;
 
 wireguard_config_t wg_config = {
