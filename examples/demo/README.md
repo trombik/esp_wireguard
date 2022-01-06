@@ -15,7 +15,7 @@ The main task then disconnects from the peer, and re-connects to the peer.
 * [`wireguard-tools`](https://github.com/WireGuard/wireguard-tools)
 * A WireGuard server
 
-## Generate keys
+## Generating keys
 
 ```console
 wg genkey | tee private.key | wg pubkey > public.key
