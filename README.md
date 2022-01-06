@@ -58,7 +58,7 @@ wireguard_config_t wg_config = {
     .persistent_keepalive = 0,
 };
 wireguard_ctx_t ctx = {0};
-err = esp_wireguard_init(&wg_config, ctx);
+err = esp_wireguard_init(&wg_config, &ctx);
 err = esp_wireguard_connect(ctx);
 
 /* do something */
