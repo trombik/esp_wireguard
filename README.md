@@ -27,6 +27,18 @@ The following targets are supported:
 * `esp32s2`
 * `esp8266`
 
+## Usage
+
+In `menuconfig` under `WireGuard`, choose a TCP/IP adapter. The default is
+`ESP-NETIF`. SDKs older than `esp-idf` `v4.1`, including ESP8266 RTOS SDK v3.4
+requires `TCP/IP Adapter`.
+
+## Known issues
+
+The implementation uses `LwIP` as TCP/IP protocol stack.
+
+IPv6 support is not tested.
+
 ## License
 
 BSD 3-Clause "New" or "Revised" License (SPDX ID: BSD-3-Clause).
