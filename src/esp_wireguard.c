@@ -121,17 +121,17 @@ esp_err_t esp_wireguard_init(wireguard_config_t *config, wireguard_ctx_t *ctx)
         struct addrinfo hint;
         memset(&hint, 0, sizeof(hint));
         memset(&endpoint_ip, 0, sizeof(endpoint_ip));
-        if (lwip_getaddrinfo(config->endpoint, NULL, &hint, &res) != 0) {
-            lwip_freeaddrinfo(res);
-            ESP_LOGE(TAG, "lwip_getaddrinfo: unable to resolve %s", config->endpoint);
+        if (getaddrinfo(config->endpoint, NULL, &hint, &res) != 0) {
+            freeaddrinfo(res);
+            ESP_LOGE(TAG, "getaddrinfo: unable to resolve %s", config->endpoint);
             err = ESP_FAIL;
             goto fail;
         }
 
-        ESP_ERROR_CHECK(lwip_getaddrinfo(CONFIG_WG_PEER_ADDRESS, NULL, &hint, &res) == 0 ? ESP_OK : ESP_FAIL);
+        ESP_ERROR_CHECK(getaddrinfo(CONFIG_WG_PEER_ADDRESS, NULL, &hint, &res) == 0 ? ESP_OK : ESP_FAIL);
         struct in_addr addr4 = ((struct sockaddr_in *) (res->ai_addr))->sin_addr;
         inet_addr_to_ip4addr(ip_2_ip4(&endpoint_ip), &addr4);
-        lwip_freeaddrinfo(res);
+        freeaddrinfo(res);
         peer.endpoint_ip = endpoint_ip;
 
     }
