@@ -52,6 +52,11 @@ static esp_err_t esp_wireguard_peer_init(const wireguard_config_t *config, struc
     esp_err_t err;
     char addr_str[INET_ADDRSTRLEN];
 
+    if (!config || !peer) {
+        err = ESP_ERR_INVALID_ARG;
+        goto fail;
+    }
+
     wireguardif_peer_init(peer);
 
     peer->public_key = config->public_key;
@@ -107,6 +112,11 @@ static esp_err_t esp_wireguard_netif_create(const wireguard_config_t *config)
     ip_addr_t gateway = IPADDR4_INIT_BYTES(0, 0, 0, 0);
     struct wireguardif_init_data wg = {0};
 
+    if (!config) {
+        err = ESP_ERR_INVALID_ARG;
+        goto fail;
+    }
+
     /* Setup the WireGuard device structure */
     wg.private_key = config->private_key;
     wg.listen_port = config->listen_port;
@@ -151,6 +161,11 @@ esp_err_t esp_wireguard_init(wireguard_config_t *config, wireguard_ctx_t *ctx)
 {
     esp_err_t err = ESP_FAIL;
 
+    if (!config || !ctx) {
+        err = ESP_ERR_INVALID_ARG;
+        goto fail;
+    }
+
     err = wireguard_platform_init();
     if (err != ESP_OK) {
         ESP_LOGE(TAG, "wireguard_platform_init: %s", esp_err_to_name(err));
@@ -169,6 +184,11 @@ esp_err_t esp_wireguard_connect(wireguard_ctx_t *ctx)
 {
     esp_err_t err = ESP_FAIL;
     err_t lwip_err = -1;
+
+    if (!ctx) {
+        err = ESP_ERR_INVALID_ARG;
+        goto fail;
+    }
 
     if (ctx->netif == NULL) {
         err = esp_wireguard_netif_create(ctx->config);
@@ -210,14 +230,28 @@ fail:
     return err;
 }
 
-void esp_wireguard_set_default(wireguard_ctx_t *ctx)
+esp_err_t esp_wireguard_set_default(wireguard_ctx_t *ctx)
 {
+    esp_err_t err;
+    if (!ctx) {
+        err = ESP_ERR_INVALID_ARG;
+        goto fail;
+    }
     netif_set_default(ctx->netif);
+    err = ESP_OK;
+fail:
+    return err;
 }
 
-void esp_wireguard_disconnect(wireguard_ctx_t *ctx)
+esp_err_t esp_wireguard_disconnect(wireguard_ctx_t *ctx)
 {
+    esp_err_t err;
     err_t lwip_err;
+
+    if (!ctx) {
+        err = ESP_ERR_INVALID_ARG;
+        goto fail;
+    }
 
     lwip_err = wireguardif_disconnect(ctx->netif, wireguard_peer_index);
     if (lwip_err != ERR_OK) {
@@ -234,16 +268,33 @@ void esp_wireguard_disconnect(wireguard_ctx_t *ctx)
     netif_remove(ctx->netif);
     netif_set_default(ctx->netif_default);
     ctx->netif = NULL;
+
+    err = ESP_OK;
+fail:
+    return err;
 }
 
 esp_err_t esp_wireguardif_peer_is_up(wireguard_ctx_t *ctx)
 {
+    esp_err_t err;
     err_t lwip_err;
+
+    if (!ctx) {
+        err = ESP_ERR_INVALID_ARG;
+        goto fail;
+    }
 
     lwip_err = wireguardif_peer_is_up(
             ctx->netif,
             wireguard_peer_index,
             &peer.endpoint_ip,
             &peer.endport_port);
-    return lwip_err == ERR_OK ? ESP_OK : ESP_FAIL;
+
+    if (lwip_err != ERR_OK) {
+        err = ESP_FAIL;
+        goto fail;
+    }
+    err = ESP_OK;
+fail:
+    return err;
 }
