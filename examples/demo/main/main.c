@@ -47,23 +47,22 @@ static EventGroupHandle_t s_wifi_event_group;
 
 static const char *TAG = "demo";
 static int s_retry_num = 0;
+static wireguard_config_t wg_config = {
+    .private_key = CONFIG_WG_PRIVATE_KEY,
+    .listen_port = CONFIG_WG_LOCAL_PORT,
+    .fw_mark = 0,
+    .public_key = CONFIG_WG_PEER_PUBLIC_KEY,
+    .preshared_key = NULL,
+    .allowed_ip = CONFIG_WG_LOCAL_IP_ADDRESS,
+    .allowed_ip_mask = CONFIG_WG_LOCAL_IP_NETMASK,
+    .endpoint = CONFIG_WG_PEER_ADDRESS,
+    .port = CONFIG_WG_PEER_PORT,
+    .persistent_keepalive = 0,
+};
 
 static esp_err_t wireguard_setup(wireguard_ctx_t* ctx)
 {
     esp_err_t err = ESP_FAIL;
-
-    wireguard_config_t wg_config = {
-        .private_key = CONFIG_WG_PRIVATE_KEY,
-        .listen_port = CONFIG_WG_LOCAL_PORT,
-        .fw_mark = 0,
-        .public_key = CONFIG_WG_PEER_PUBLIC_KEY,
-        .preshared_key = NULL,
-        .allowed_ip = CONFIG_WG_LOCAL_IP_ADDRESS,
-        .allowed_ip_mask = CONFIG_WG_LOCAL_IP_NETMASK,
-        .endpoint = CONFIG_WG_PEER_ADDRESS,
-        .port = CONFIG_WG_PEER_PORT,
-        .persistent_keepalive = 0,
-    };
 
     ESP_LOGI(TAG, "Initializing WireGuard.");
     err = esp_wireguard_init(&wg_config, ctx);
@@ -344,9 +343,7 @@ void app_main(void)
     time_t now;
     struct tm timeinfo;
     char strftime_buf[64];
-    wireguard_ctx_t ctx;
-
-    memset(&ctx, 0, sizeof(wireguard_ctx_t)); 
+    wireguard_ctx_t ctx = {0};
 
     err = nvs_flash_init();
 #if defined(CONFIG_IDF_TARGET_ESP8266) && ESP_IDF_VERSION <= ESP_IDF_VERSION_VAL(3, 4, 0)
@@ -393,7 +390,23 @@ void app_main(void)
     start_ping();
 
     while (1) {
-        vTaskDelay(1000 / portTICK_RATE_MS);
+        vTaskDelay(1000 * 10 / portTICK_RATE_MS);
+        ESP_LOGI(TAG, "Disconnecting.");
+        esp_wireguard_disconnect(&ctx);
+        ESP_LOGI(TAG, "Disconnected.");
+
+        vTaskDelay(1000 * 10 / portTICK_RATE_MS);
+        ESP_LOGI(TAG, "Connecting.");
+        err = esp_wireguard_connect(&ctx);
+        if (err != ESP_OK) {
+            ESP_LOGE(TAG, "esp_wireguard_connect: %s", esp_err_to_name(err));
+            goto fail;
+        }
+        while (esp_wireguardif_peer_is_up(&ctx) != ESP_OK) {
+            vTaskDelay(1000 / portTICK_RATE_MS);
+        }
+        ESP_LOGI(TAG, "Peer is up");
+        esp_wireguard_set_default(&ctx);
     }
 
 fail:

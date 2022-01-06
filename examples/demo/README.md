@@ -3,7 +3,10 @@
 ## What the example does
 
 The example connects to a WireGuard server. When the link is up, the device
-sends ICMP echo requests, shows ping statistics, and loops forever.
+sends ICMP echo requests, and shows ping statistics. The ICMP session loops
+forever.
+
+The main task then disconnects from the peer, and re-connects to the peer.
 
 ## Requirements
 
