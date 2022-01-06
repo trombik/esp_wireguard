@@ -33,6 +33,8 @@ In `menuconfig` under `WireGuard`, choose a TCP/IP adapter. The default is
 `ESP-NETIF`. SDKs older than `esp-idf` `v4.1`, including ESP8266 RTOS SDK v3.4
 requires `TCP/IP Adapter`.
 
+Both peers must have synced time. The library does not sync time.
+
 ## Known issues
 
 The implementation uses `LwIP` as TCP/IP protocol stack.
