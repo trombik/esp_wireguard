@@ -244,7 +244,7 @@ jobs:
             TOOLCHAIN_VERSION="esp-2020r3-8.4.0"
             ;;
           v4.3.*)
-            TOOLCHAIN_VERSION="esp-2021r1-8.4.0"
+            TOOLCHAIN_VERSION="esp-2021r2-8.4.0"
             ;;
           *)
             echo "Unknown matrix.branch: ${{ matrix.branch }}"
