@@ -25,6 +25,7 @@ The following targets are supported:
 
 * `esp32`
 * `esp32s2`
+* `esp32c3`
 * `esp8266`
 
 ## Usage
