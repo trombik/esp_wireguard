@@ -138,10 +138,6 @@ jobs:
           # https://github.com/espressif/esp-idf/commit/7a18f02acd7005f7c56e62175a8d1968a1a9019d
           sed -i -e "s/'--no-site-packages',//" ${IDF_PATH}/tools/idf_tools.py
 
-          # XXX remove some modules
-          # gdbgui cannot be installed successfully with python 3.8
-          sed -i -e "s/^gdbgui.*//" -e "s/^pygdbmi.*//" ${IDF_PATH}/requirements.txt
-
       - name: Run idf_tools.py install
         run: |
           ${IDF_PATH}/tools/idf_tools.py install
@@ -193,7 +189,7 @@ jobs:
           # see issue #2
           # - v4.1.2
           - v4.2.2
-          - v4.3.1
+          - v4.3.2
         target:
           - esp32
     steps:
@@ -298,10 +294,6 @@ jobs:
           # be removed when the following commit is merged
           # https://github.com/espressif/esp-idf/commit/7a18f02acd7005f7c56e62175a8d1968a1a9019d
           sed -i -e "s/'--no-site-packages',//" ${IDF_PATH}/tools/idf_tools.py
-
-          # XXX remove some modules
-          # gdbgui cannot be installed successfully with python 3.8
-          sed -i -e "s/^gdbgui.*//" -e "s/^pygdbmi.*//" ${IDF_PATH}/requirements.txt
 
       - name: Cache esp-idf tools
 
@@ -593,8 +585,6 @@ jobs:
         run: |
 
           sed -i -e "s/'--no-site-packages',//" ${IDF_PATH}/tools/idf_tools.py
-
-          sed -i -e "s/^gdbgui.*//" -e "s/^pygdbmi.*//" ${IDF_PATH}/requirements.txt
 
       - name: Cache esp-idf tools
 
