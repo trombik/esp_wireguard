@@ -42,7 +42,6 @@
 #define WIREGUARDIF_MTU (1420)
 
 #define WIREGUARDIF_DEFAULT_PORT		(51820)
-#define WIREGUARDIF_KEEPALIVE_DEFAULT	(0xFFFF)
 
 struct wireguardif_init_data {
 	// Required: the private key of this WireGuard network interface
