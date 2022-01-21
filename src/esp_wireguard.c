@@ -57,10 +57,9 @@ static esp_err_t esp_wireguard_peer_init(const wireguard_config_t *config, struc
         goto fail;
     }
 
-    wireguardif_peer_init(peer);
-
     peer->public_key = config->public_key;
     peer->preshared_key = (uint8_t*)config->preshared_key;
+    peer->keep_alive = config->persistent_keepalive;
 
     /* Allow all IPs through tunnel */
     {
@@ -99,6 +98,7 @@ static esp_err_t esp_wireguard_peer_init(const wireguard_config_t *config, struc
         ESP_LOGI(TAG, "Peer: %s (%s:%d)", config->endpoint, addr_str, config->port);
     }
     peer->endport_port = config->port;
+    peer->keep_alive = config->persistent_keepalive;
     err = ESP_OK;
 fail:
     return err;

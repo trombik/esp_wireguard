@@ -47,24 +47,22 @@ static EventGroupHandle_t s_wifi_event_group;
 
 static const char *TAG = "demo";
 static int s_retry_num = 0;
-static wireguard_config_t wg_config = {
-    .private_key = CONFIG_WG_PRIVATE_KEY,
-    .listen_port = CONFIG_WG_LOCAL_PORT,
-    .fw_mark = 0,
-    .public_key = CONFIG_WG_PEER_PUBLIC_KEY,
-    .preshared_key = NULL,
-    .allowed_ip = CONFIG_WG_LOCAL_IP_ADDRESS,
-    .allowed_ip_mask = CONFIG_WG_LOCAL_IP_NETMASK,
-    .endpoint = CONFIG_WG_PEER_ADDRESS,
-    .port = CONFIG_WG_PEER_PORT,
-    .persistent_keepalive = 0,
-};
+static wireguard_config_t wg_config = ESP_WIREGUARD_CONFIG_DEFAULT();
 
 static esp_err_t wireguard_setup(wireguard_ctx_t* ctx)
 {
     esp_err_t err = ESP_FAIL;
 
     ESP_LOGI(TAG, "Initializing WireGuard.");
+    wg_config.private_key = CONFIG_WG_PRIVATE_KEY;
+    wg_config.listen_port = CONFIG_WG_LOCAL_PORT;
+    wg_config.public_key = CONFIG_WG_PEER_PUBLIC_KEY;
+    wg_config.allowed_ip = CONFIG_WG_LOCAL_IP_ADDRESS;
+    wg_config.allowed_ip_mask = CONFIG_WG_LOCAL_IP_NETMASK;
+    wg_config.endpoint = CONFIG_WG_PEER_ADDRESS;
+    wg_config.port = CONFIG_WG_PEER_PORT;
+    wg_config.persistent_keepalive = CONFIG_WG_PERSISTENT_KEEP_ALIVE;
+
     err = esp_wireguard_init(&wg_config, ctx);
     if (err != ESP_OK) {
         ESP_LOGE(TAG, "esp_wireguard_init: %s", esp_err_to_name(err));
