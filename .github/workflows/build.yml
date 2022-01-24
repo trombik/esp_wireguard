@@ -52,6 +52,9 @@ jobs:
       matrix:
         target:
           - esp32
+        ip_version:
+          - ipv4
+          - ipv6
     steps:
       - name: Checkout
         uses: actions/checkout@v2
@@ -167,6 +170,9 @@ jobs:
               # FIXME Remove this workaround when esp-idf issue #7621 will be fixed
               echo "CONFIG_MBEDTLS_CERTIFICATE_BUNDLE=n" >> sdkconfig.defaults
               echo "CONFIG_MBEDTLS_CERTIFICATE_BUNDLE_DEFAULT_FULL=n" >> sdkconfig.defaults
+              if [ ${{ matrix.ip_version }} == "ipv6" ]; then
+                echo "CONFIG_LWIP_IPV6=y" >> sdkconfig.defaults
+              fi
               echo "Building ${i}..."
               idf.py --ccache build
             fi
@@ -192,6 +198,9 @@ jobs:
           - v4.3.2
         target:
           - esp32
+        ip_version:
+          - ipv4
+          - ipv6
     steps:
       - name: Checkout
         uses: actions/checkout@v2
@@ -337,6 +346,9 @@ jobs:
               # FIXME Remove this workaround when esp-idf issue #7621 will be fixed
               echo "CONFIG_MBEDTLS_CERTIFICATE_BUNDLE=n" >> sdkconfig.defaults
               echo "CONFIG_MBEDTLS_CERTIFICATE_BUNDLE_DEFAULT_FULL=n" >> sdkconfig.defaults
+              if [ ${{ matrix.ip_version }} == "ipv6" ]; then
+                echo "CONFIG_LWIP_IPV6=y" >> sdkconfig.defaults
+              fi
               echo "Building ${i}..."
               idf.py --ccache build
             fi
@@ -377,6 +389,9 @@ jobs:
               # FIXME Remove this workaround when esp-idf issue #7621 will be fixed
               echo "CONFIG_MBEDTLS_CERTIFICATE_BUNDLE=n" >> sdkconfig.defaults
               echo "CONFIG_MBEDTLS_CERTIFICATE_BUNDLE_DEFAULT_FULL=n" >> sdkconfig.defaults
+              if [ ${{ matrix.ip_version }} == "ipv6" ]; then
+                echo "CONFIG_LWIP_IPV6=y" >> sdkconfig.defaults
+              fi
               make defconfig
               make -j$(nproc)
             fi
@@ -396,6 +411,9 @@ jobs:
         branch:
           - v3.4
           - master
+        ip_version:
+          - ipv4
+          - ipv6
     steps:
       - name: Checkout
         uses: actions/checkout@v2
@@ -500,6 +518,9 @@ jobs:
               # `sdkconfig.defaults.TARGET_NAME` yet. create
               # sdkconfig.defaults for ESP8266
               echo "CONFIG_WIREGUARD_ESP_TCPIP_ADAPTER=y" >> sdkconfig.defaults
+              if [ ${{ matrix.ip_version }} == "ipv6" ]; then
+                echo "CONFIG_LWIP_IPV6=y" >> sdkconfig.defaults
+              fi
               echo "Building ${i}..."
               make defconfig
               make -j$(nproc)
@@ -533,6 +554,9 @@ jobs:
           - v4.3.1
         target:
           - esp32s2
+        ip_version:
+          - ipv4
+          - ipv6
     steps:
       - name: Checkout
         uses: actions/checkout@v2
@@ -624,6 +648,9 @@ jobs:
               # FIXME Remove this workaround when esp-idf issue #7621 will be fixed
               echo "CONFIG_MBEDTLS_CERTIFICATE_BUNDLE=n" >> sdkconfig.defaults
               echo "CONFIG_MBEDTLS_CERTIFICATE_BUNDLE_DEFAULT_FULL=n" >> sdkconfig.defaults
+              if [ ${{ matrix.ip_version }} == "ipv6" ]; then
+                echo "CONFIG_LWIP_IPV6=y" >> sdkconfig.defaults
+              fi
               idf.py --ccache build
             fi
           done
@@ -642,6 +669,9 @@ jobs:
           - v4.3.2
         target:
           - esp32c3
+        ip_version:
+          - ipv4
+          - ipv6
     steps:
       - name: Checkout
         uses: actions/checkout@v2
@@ -733,6 +763,9 @@ jobs:
               # FIXME Remove this workaround when esp-idf issue #7621 will be fixed
               echo "CONFIG_MBEDTLS_CERTIFICATE_BUNDLE=n" >> sdkconfig.defaults
               echo "CONFIG_MBEDTLS_CERTIFICATE_BUNDLE_DEFAULT_FULL=n" >> sdkconfig.defaults
+              if [ ${{ matrix.ip_version }} == "ipv6" ]; then
+                echo "CONFIG_LWIP_IPV6=y" >> sdkconfig.defaults
+              fi
               idf.py --ccache build
             fi
           done

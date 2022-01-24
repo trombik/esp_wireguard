@@ -41,6 +41,11 @@
 #include "wireguardif.h"
 
 #define TAG "esp_wireguard"
+#if defined(CONFIG_LWIP_IPV6)
+#define WG_ADDRSTRLEN  INET6_ADDRSTRLEN
+#else
+#define WG_ADDRSTRLEN  INET_ADDRSTRLEN
+#endif
 
 static struct netif wg_netif_struct = {0};
 static struct netif *wg_netif = NULL;
@@ -50,7 +55,12 @@ static uint8_t wireguard_peer_index = WIREGUARDIF_INVALID_INDEX;
 static esp_err_t esp_wireguard_peer_init(const wireguard_config_t *config, struct wireguardif_peer *peer)
 {
     esp_err_t err;
-    char addr_str[INET_ADDRSTRLEN];
+    char addr_str[WG_ADDRSTRLEN];
+    struct addrinfo *res = NULL;
+    struct addrinfo hints;
+
+    memset(&hints, 0, sizeof(hints));
+    hints.ai_family = AF_UNSPEC;
 
     if (!config || !peer) {
         err = ESP_ERR_INVALID_ARG;
@@ -71,36 +81,43 @@ static esp_err_t esp_wireguard_peer_init(const wireguard_config_t *config, struc
 
     /* resolve peer name or IP address */
     {
-        ip_addr_t endpoint_ip = IPADDR4_INIT_BYTES(0, 0, 0, 0);
-        struct addrinfo *res = NULL;
-        struct addrinfo hint;
-        memset(&hint, 0, sizeof(hint));
+        ip_addr_t endpoint_ip;
         memset(&endpoint_ip, 0, sizeof(endpoint_ip));
-        if (getaddrinfo(config->endpoint, NULL, &hint, &res) != 0) {
-            freeaddrinfo(res);
-            ESP_LOGE(TAG, "getaddrinfo: unable to resolve %s", config->endpoint);
+
+        /* XXX lwip_getaddrinfo returns only the first address of a host at the moment */
+        if (getaddrinfo(config->endpoint, NULL, &hints, &res) != 0) {
             err = ESP_FAIL;
+
+            /* XXX gai_strerror() is not implemented */
+            ESP_LOGE(TAG, "getaddrinfo: unable to resolve `%s`", config->endpoint);
             goto fail;
         }
 
-        ESP_ERROR_CHECK(getaddrinfo(CONFIG_WG_PEER_ADDRESS, NULL, &hint, &res) == 0 ? ESP_OK : ESP_FAIL);
-        struct in_addr addr4 = ((struct sockaddr_in *) (res->ai_addr))->sin_addr;
-        inet_addr_to_ip4addr(ip_2_ip4(&endpoint_ip), &addr4);
-        freeaddrinfo(res);
+        if (res->ai_family == AF_INET) {
+            struct in_addr addr4 = ((struct sockaddr_in *) (res->ai_addr))->sin_addr;
+            inet_addr_to_ip4addr(ip_2_ip4(&endpoint_ip), &addr4);
+        } else {
+#if defined(CONFIG_LWIP_IPV6)
+            struct in6_addr addr6 = ((struct sockaddr_in6 *) (res->ai_addr))->sin6_addr;
+            inet6_addr_to_ip6addr(ip_2_ip6(&endpoint_ip), &addr6);
+#endif
+        }
         peer->endpoint_ip = endpoint_ip;
 
-    }
-
-    inet_ntop(AF_INET, &(peer->endpoint_ip), addr_str, INET_ADDRSTRLEN);
-    if (addr_str == NULL) {
-        ESP_LOGW(TAG, "inet_ntop: %d", errno);
-    } else {
-        ESP_LOGI(TAG, "Peer: %s (%s:%d)", config->endpoint, addr_str, config->port);
+        if (inet_ntop(res->ai_family, &(peer->endpoint_ip), addr_str, WG_ADDRSTRLEN) == NULL) {
+            ESP_LOGW(TAG, "inet_ntop: %d", errno);
+        } else {
+            ESP_LOGI(TAG, "Peer: %s (%s:%d)",
+                                            config->endpoint,
+                                            addr_str,
+                                            config->port);
+        }
     }
     peer->endport_port = config->port;
     peer->keep_alive = config->persistent_keepalive;
     err = ESP_OK;
 fail:
+    freeaddrinfo(res);
     return err;
 }
 
