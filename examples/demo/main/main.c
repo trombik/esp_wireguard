@@ -376,7 +376,7 @@ void app_main(void)
     }
 
     while (1) {
-        vTaskDelay(1000 / portTICK_RATE_MS);
+        vTaskDelay(1000 / portTICK_PERIOD_MS);
         err = esp_wireguardif_peer_is_up(&ctx);
         if (err == ESP_OK) {
             ESP_LOGI(TAG, "Peer is up");
@@ -388,12 +388,12 @@ void app_main(void)
     start_ping();
 
     while (1) {
-        vTaskDelay(1000 * 10 / portTICK_RATE_MS);
+        vTaskDelay(1000 * 10 / portTICK_PERIOD_MS);
         ESP_LOGI(TAG, "Disconnecting.");
         esp_wireguard_disconnect(&ctx);
         ESP_LOGI(TAG, "Disconnected.");
 
-        vTaskDelay(1000 * 10 / portTICK_RATE_MS);
+        vTaskDelay(1000 * 10 / portTICK_PERIOD_MS);
         ESP_LOGI(TAG, "Connecting.");
         err = esp_wireguard_connect(&ctx);
         if (err != ESP_OK) {
@@ -401,7 +401,7 @@ void app_main(void)
             goto fail;
         }
         while (esp_wireguardif_peer_is_up(&ctx) != ESP_OK) {
-            vTaskDelay(1000 / portTICK_RATE_MS);
+            vTaskDelay(1000 / portTICK_PERIOD_MS);
         }
         ESP_LOGI(TAG, "Peer is up");
         esp_wireguard_set_default(&ctx);
@@ -410,6 +410,6 @@ void app_main(void)
 fail:
     ESP_LOGE(TAG, "Halting due to error");
     while (1) {
-        vTaskDelay(1000 / portTICK_RATE_MS);
+        vTaskDelay(1000 / portTICK_PERIOD_MS);
     }
 }
