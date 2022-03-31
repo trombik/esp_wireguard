@@ -74,11 +74,19 @@ err = esp_wireguard_disconnect(&ctx);
 
 See examples at [examples](examples).
 
+## IPv6 support
+
+Enable `CONFIG_LWIP_IPV6` under `lwip` component in `menuconfig`.
+
+IPv6 support is alpha and probably broken. See also Known issues.
+
 ## Known issues
 
 The implementation uses `LwIP` as TCP/IP protocol stack.
 
-IPv6 support is not tested.
+IPv6 support is not tested.  Dual stack (IPv4 and IPv6) is not supported (see
+Issue #5). The first address of `endpoint` is used to choose IPv4 or IPv6 as a
+transport. The chosen transport must be available and usable.
 
 The library assumes the interface is WiFi interface. Ethernet is not
 supported.
