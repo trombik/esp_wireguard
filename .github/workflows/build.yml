@@ -196,6 +196,7 @@ jobs:
           # - v4.1.2
           - v4.2.3
           - v4.3.2
+          - v4.4.1
         target:
           - esp32
         ip_version:
@@ -254,6 +255,9 @@ jobs:
             ;;
           v4.3.*)
             TOOLCHAIN_VERSION="esp-2021r2-8.4.0"
+            ;;
+          v4.4.*)
+            TOOLCHAIN_VERSION="esp-2021r2-patch3-8.4.0"
             ;;
           *)
             echo "Unknown matrix.branch: ${{ matrix.branch }}"
@@ -552,6 +556,7 @@ jobs:
           - master
           - v4.2.2
           - v4.3.1
+          - v4.4.1
         target:
           - esp32s2
         ip_version:
