@@ -19,6 +19,7 @@ The following ESP-IDF versions are supported:
 * `esp-idf` `master`
 * `esp-idf` `v4.2.x`
 * `esp-idf` `v4.3.x`
+* `esp-idf` `v4.4.x`
 * ESP8266 RTOS SDK `v3.4`
 
 The following targets are supported:
