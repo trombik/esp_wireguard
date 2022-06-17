@@ -1,0 +1,49 @@
+{
+   "name": "esp_wireguard",
+   "version": "0.0.0-beta1",
+   "description": "WireGuard implementation for esp-idf",
+   "keywords":[
+      "wireguard",
+      "esp32",
+      "esphome",
+      "espidf"
+   ],
+   "repository":{
+      "type": "git",
+      "url": "https://github.com/droscy/esp_wireguard",
+      "branch": "esp32/espidf"
+   },
+   "authors":[
+      {
+         "name": "Daniel Hope",
+         "email": "daniel.hope@smartalock.com",
+         "url": "http://www.floorsense.nz/"
+      },
+      {
+         "name": "Kenta Ida",
+         "email": "fuga@fugafuga.org"
+      },
+      {
+         "name": "Tomoyuki Sakurai",
+         "email": "y@trombik.org",
+         "url": "http://info.mkrsgh.org/makerspace/"
+      },
+      {
+         "name": "Simone Rossetto",
+         "email": "simros85@gmail.com",
+         "maintainer": true
+      }
+   ],
+   "license": "BSD-3-Clause",
+   "frameworks":[
+      "espidf"
+   ],
+   "include":[
+      "include/*",
+      "src/*"
+   ],
+   "build":{
+      "includeDir":"include",
+      "srcDir":"src"
+   }
+}
