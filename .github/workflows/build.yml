@@ -188,7 +188,6 @@ jobs:
       matrix:
         build_method:
           - idf
-          - make
         branch:
 
           # for supported versions by espressif, see:
@@ -357,49 +356,6 @@ jobs:
               fi
               echo "Building ${i}..."
               idf.py --ccache build
-            fi
-          done
-
-      - name: Setup ccache (make)
-
-        # XXX ccache needs to be configured here
-        # unlike idf.py, esp-idf does nothing to setup ccache for make.
-        # IDF_CCACHE_ENABLE does not work either.
-        if: ${{ matrix.build_method == 'make' }}
-        run: |
-          GCC_BIN_DIR="${__PROJECT_TOOLCHAIN_DIR}/${__PROJECT_GCC_PREFIX}/${__PROJECT_TOOLCHAIN_VERSION}/${__PROJECT_GCC_PREFIX}/bin"
-          CCACHE_BIN_DIR="${HOME}/ccache_bin"
-          mkdir -p "${CCACHE_BIN_DIR}"
-          (cd "${CCACHE_BIN_DIR}" && ln -s /usr/bin/ccache "${__PROJECT_GCC_FILE}")
-          export PATH="${CCACHE_BIN_DIR}:$PATH:${GCC_BIN_DIR}"
-          echo "PATH=${PATH}" >> ${GITHUB_ENV}
-          echo "CCACHE_BASEDIR=${__PROJECT_EXAMPLE_DIR}" >> ${GITHUB_ENV}
-          echo "CCACHE_NOHASHDIR=true" >> ${GITHUB_ENV}
-
-      - name: Build (make)
-        if: ${{ matrix.build_method == 'make' }}
-        run: |
-
-          # make sure gcc is in $PATH
-          echo ${PATH}
-          ${__PROJECT_GCC_FILE} --version
-
-          IGNORE_FILE="ci-ignore"
-          . ${IDF_PATH}/export.sh
-
-          cd "${__PROJECT_EXAMPLE_DIR}"
-          for i in $(ls -d *); do
-            if [ ! -e "${__PROJECT_EXAMPLE_DIR}/${i}/${IGNORE_FILE}" ]; then
-              cd "${__PROJECT_EXAMPLE_DIR}/${i}"
-              echo "Building ${i}..."
-              # FIXME Remove this workaround when esp-idf issue #7621 will be fixed
-              echo "CONFIG_MBEDTLS_CERTIFICATE_BUNDLE=n" >> sdkconfig.defaults
-              echo "CONFIG_MBEDTLS_CERTIFICATE_BUNDLE_DEFAULT_FULL=n" >> sdkconfig.defaults
-              if [ ${{ matrix.ip_version }} == "ipv6" ]; then
-                echo "CONFIG_LWIP_IPV6=y" >> sdkconfig.defaults
-              fi
-              make defconfig
-              make -j$(nproc)
             fi
           done
 
