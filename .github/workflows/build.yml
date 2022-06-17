@@ -49,6 +49,7 @@ jobs:
     if: ${{ needs.pre_build.outputs.should_skip != 'true' }}
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
         target:
           - esp32
@@ -183,6 +184,7 @@ jobs:
     if: ${{ needs.pre_build.outputs.should_skip != 'true' }}
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
         build_method:
           - idf
@@ -406,6 +408,7 @@ jobs:
     needs: pre_build
     if: ${{ needs.pre_build.outputs.should_skip != 'true' }}
     strategy:
+      fail-fast: false
       matrix:
         build_method:
 
@@ -547,6 +550,7 @@ jobs:
     needs: pre_build
     if: ${{ needs.pre_build.outputs.should_skip != 'true' }}
     strategy:
+      fail-fast: false
       matrix:
         build_method:
           - idf
@@ -665,6 +669,7 @@ jobs:
     needs: pre_build
     if: ${{ needs.pre_build.outputs.should_skip != 'true' }}
     strategy:
+      fail-fast: false
       matrix:
         build_method:
           - idf
