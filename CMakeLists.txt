@@ -12,3 +12,9 @@ idf_component_register(
     INCLUDE_DIRS "include"
     PRIV_INCLUDE_DIRS "src"
     REQUIRES lwip mbedtls)
+
+if(${IDF_VERSION_MAJOR} STREQUAL 5)
+    set_source_files_properties(src/crypto/refc/x25519.c
+        PROPERTIES COMPILE_FLAGS
+        -Wno-error=stringop-overread)
+endif()
