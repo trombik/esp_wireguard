@@ -1,6 +1,10 @@
 #ifndef _CRYPTO_H_
 #define _CRYPTO_H_
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include <stdlib.h>
 #include <stdint.h>
 #include <stdbool.h>
