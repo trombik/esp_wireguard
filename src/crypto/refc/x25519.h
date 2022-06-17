@@ -11,6 +11,10 @@
 #ifndef __X25519_H__
 #define __X25519_H__
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #define X25519_BYTES (256/8)
 
 /* The base point (9) */
@@ -125,5 +129,9 @@ int x25519_verify_p2 (
     const unsigned char eph[X25519_BYTES],
     const unsigned char pub[X25519_BYTES]
 );
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* __X25519_H__ */

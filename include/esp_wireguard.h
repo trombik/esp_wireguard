@@ -31,6 +31,10 @@
 #if !defined(__ESP_WIREGUARD__H__)
 #define __ESP_WIREGUARD__H__
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include <stdint.h>
 #include <esp_err.h>
 #include <lwip/netif.h>
@@ -117,6 +121,10 @@ esp_err_t esp_wireguardif_peer_is_up(wireguard_ctx_t *ctx);
  *      - ESP_OK on success.
  */
 esp_err_t esp_wireguard_disconnect(wireguard_ctx_t *ctx);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif
 // vim: expandtab

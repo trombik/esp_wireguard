@@ -37,6 +37,10 @@
 #ifndef _CHACHA20_H_
 #define _CHACHA20_H_
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include <stdint.h>
 
 #define CHACHA20_BLOCK_SIZE		(64)
@@ -49,5 +53,9 @@ struct chacha20_ctx {
 void chacha20_init(struct chacha20_ctx *ctx, const uint8_t *key, const uint64_t nonce);
 void chacha20(struct chacha20_ctx *ctx, uint8_t *out, const uint8_t *in, uint32_t len);
 void hchacha20(uint8_t *out, const uint8_t *nonce, const uint8_t *key);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* _CHACHA20_H_ */

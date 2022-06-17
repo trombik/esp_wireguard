@@ -33,6 +33,10 @@
 #ifndef _WIREGUARD_PLATFORM_H_
 #define _WIREGUARD_PLATFORM_H_
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include <stdint.h>
 #include <stdlib.h>
 #include <stdbool.h>
@@ -67,5 +71,8 @@ void wireguard_tai64n_now(uint8_t *output);
 // Is the system under load - i.e. should we generate cookie reply message in response to initiation messages
 bool wireguard_is_under_load();
 
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* _WIREGUARD_PLATFORM_H_ */
