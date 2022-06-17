@@ -44,7 +44,12 @@
 #include <sys/socket.h>
 #include <esp_log.h>
 #include <esp_err.h>
+#if defined(CONFIG_WIREGUARD_ESP_NETIF)
 #include <esp_netif.h>
+#endif
+#if defined(CONFIG_WIREGUARD_ESP_TCPIP_ADAPTER)
+#include <tcpip_adapter.h>
+#endif
 
 #include "wireguard.h"
 #include "crypto.h"
