@@ -48,6 +48,12 @@
     .persistent_keepalive = 0, \
 }
 
+#define ESP_WIREGUARD_CONTEXT_DEFAULT() { \
+    .config = NULL, \
+    .netif = NULL, \
+    .netif_default = NULL, \
+}
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -127,4 +133,4 @@ esp_err_t esp_wireguard_disconnect(wireguard_ctx_t *ctx);
 #endif
 
 #endif
-// vim: expandtab
+// vim: expandtab tabstop=4

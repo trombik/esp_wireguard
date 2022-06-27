@@ -2,3 +2,7 @@
 /examples/*/build
 /examples/*/sdkconfig
 /examples/*/sdkconfig.*
+/.cproject
+/.project
+/.settings/
+/lib/
