@@ -79,6 +79,13 @@ typedef struct {
 /**
  * @brief Initialize WireGuard
  *
+ * Call this function to initilize the context of WireGuard.
+ *
+ * Do not call this function multiple times.
+ *
+ * To connect to other peer, use `esp_wireguard_disconnect()`, and
+ * `esp_wireguard_init()` with a new configuration.
+ *
  * @param       config WireGuard configuration.
  * @param[out]  ctx Context of WireGuard.
  *
@@ -90,8 +97,14 @@ typedef struct {
 esp_err_t esp_wireguard_init(wireguard_config_t *config, wireguard_ctx_t *ctx);
 
 /**
- * @brief Create a WireGuard interface and establish the connection to the
- *        peer.
+ * @brief Create a WireGuard interface and start establishing the connection
+ *        to the peer.
+ *
+ * Call the funtion to start establishing the connection. Note that `ESP_OK`
+ * does not mean the connection is established. To see if the connection is
+ * established, or the peer is up, use `esp_wireguardif_peer_is_up()`.
+ *
+ * Do not call this function multiple times.
  *
  * @param       ctx Context of WireGuard.
  * @return
