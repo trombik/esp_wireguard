@@ -69,11 +69,11 @@ err = esp_wireguard_init(&wg_config, &ctx);
 
 /* start establishing the link. after this call, esp_wireguard start
    establishing connection. */
-err = esp_wireguard_connect(ctx);
+err = esp_wireguard_connect(&ctx);
 
 /* after some time, see if the link is up. note that it takes some time to
    establish the link */
-err = esp_wireguardif_peer_is_up(ctx);
+err = esp_wireguardif_peer_is_up(&ctx);
 if (err == ESP_OK) {
     /* the link is up */
 else {
