@@ -3,6 +3,10 @@
 #ifndef _BLAKE2S_H
 #define _BLAKE2S_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #define BLAKE2S_BLOCK_SIZE 64
 
 #include <stdint.h>
@@ -35,5 +39,9 @@ void blake2s_final(blake2s_ctx *ctx, void *out);
 int blake2s(void *out, size_t outlen,   // return buffer for digest
     const void *key, size_t keylen,     // optional secret key
     const void *in, size_t inlen);      // data to be hashed
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

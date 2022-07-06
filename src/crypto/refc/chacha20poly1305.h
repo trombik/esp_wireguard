@@ -33,6 +33,10 @@
 #ifndef _CHACHA20POLY1305_H_
 #define _CHACHA20POLY1305_H_
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include <stdbool.h>
 #include <stdlib.h>
 #include <stdint.h>
@@ -46,5 +50,9 @@ bool chacha20poly1305_decrypt(uint8_t *dst, const uint8_t *src, size_t src_len, 
 // AEAD_XChaCha20_Poly1305 as described in https://tools.ietf.org/id/draft-arciszewski-xchacha-02.html
 void xchacha20poly1305_encrypt(uint8_t *dst, const uint8_t *src, size_t src_len, const uint8_t *ad, size_t ad_len, const uint8_t *nonce, const uint8_t *key);
 bool xchacha20poly1305_decrypt(uint8_t *dst, const uint8_t *src, size_t src_len, const uint8_t *ad, size_t ad_len, const uint8_t *nonce, const uint8_t *key);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* _CHACHA20POLY1305_H_ */

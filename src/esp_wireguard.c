@@ -30,6 +30,7 @@
  */
 
 #include <assert.h>
+#include <string.h>
 #include <lwip/ip.h>
 #include <lwip/netdb.h>
 #include <lwip/err.h>

@@ -66,7 +66,19 @@ wg_config.port = CONFIG_WG_PEER_PORT;
 
 wireguard_ctx_t ctx = {0};
 err = esp_wireguard_init(&wg_config, &ctx);
-err = esp_wireguard_connect(ctx);
+
+/* start establishing the link. after this call, esp_wireguard start
+   establishing connection. */
+err = esp_wireguard_connect(&ctx);
+
+/* after some time, see if the link is up. note that it takes some time to
+   establish the link */
+err = esp_wireguardif_peer_is_up(&ctx);
+if (err == ESP_OK) {
+    /* the link is up */
+else {
+    /* the link is not up */
+}
 
 /* do something */
 
