@@ -1,0 +1,43 @@
+Vagrant.configure("2") do |config|
+  config.vm.box = "trombik/ansible-openbsd-7.1-amd64"
+  config.vm.network "public_network"
+  config.vm.provision "shell", inline: <<-SHELL
+    rcctl enable ntpd
+    rcctl start ntpd
+    touch /etc/hostname.wg0
+    chmod 600 /etc/hostname.wg0
+    echo "wgkey iN8Rsdc10MFjkeqJ352OvtoMhkG5AFZWc/k4cS9odHM= wgport 12912" >> /etc/hostname.wg0
+    echo "inet 192.168.4.254 255.255.255.0" >> /etc/hostname.wg0
+    echo "wgpeer P3IiNMO9ZrKXp7kX/J0RVzgFwouWprYTjea/kMm36wA= wgaip 192.168.4.58/32" >> /etc/hostname.wg0
+    sh /etc/netstart wg0 start
+  SHELL
+end
+
+# A vagrant box for testing. The VM is configured to use a brigde network,
+# i.e. the VM is attached to the same network of the host OS. The interface
+# uses DHCP.
+#
+# client secret key: IlLYVwKnmB7PM+4U3y2KYQfPQk0FCccbunFvkSiIn3Y=
+# client public key: P3IiNMO9ZrKXp7kX/J0RVzgFwouWprYTjea/kMm36wA=
+#
+# server secret key: iN8Rsdc10MFjkeqJ352OvtoMhkG5AFZWc/k4cS9odHM=
+# server public key: FjrsQ/HD1Q8fUlFILIasDlOuajMeZov4NGqMJpkswiw=
+#
+# wg(4) network: 192.168.4.0/24
+# IP address of the server: 192.168.4.254
+# allowed IP address of the client: 192.168.4.58
+# the server port: 12912
+#
+# to boot the VM, run:
+# vagrant up
+#
+# to login to the VM, run:
+# vagrant ssh
+#
+# for IP address of the server, login to the VM and run:
+# ifconfig em1
+#
+# for details of wg(4) interface, run:
+# ifconfig wg0
+#
+# sudo requires no password.
