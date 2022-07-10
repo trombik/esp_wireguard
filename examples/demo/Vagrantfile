@@ -26,6 +26,7 @@ end
 # wg(4) network: 192.168.4.0/24
 # IP address of the server: 192.168.4.254
 # allowed IP address of the client: 192.168.4.58
+# the server port: 12912
 #
 # to boot the VM, run:
 # vagrant up
