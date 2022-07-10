@@ -4,7 +4,7 @@ on:
   push:
   pull_request:
      branches:
-        - master
+        - main
 
   # include workflow_dispatch to enable manual trigger from Web UI.
   workflow_dispatch:
