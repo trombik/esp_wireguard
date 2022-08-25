@@ -7,6 +7,7 @@
    CONDITIONS OF ANY KIND, either express or implied.
 */
 #include <string.h>
+#include <inttypes.h>
 #include <time.h>
 #include <sys/time.h>
 #include <freertos/FreeRTOS.h>
@@ -57,6 +58,11 @@ static esp_err_t wireguard_setup(wireguard_ctx_t* ctx)
     wg_config.private_key = CONFIG_WG_PRIVATE_KEY;
     wg_config.listen_port = CONFIG_WG_LOCAL_PORT;
     wg_config.public_key = CONFIG_WG_PEER_PUBLIC_KEY;
+    if (strcmp(CONFIG_WG_PRESHARED_KEY, "") != 0) {
+        wg_config.preshared_key = CONFIG_WG_PRESHARED_KEY;
+    } else {
+        wg_config.preshared_key = NULL;
+    }
     wg_config.allowed_ip = CONFIG_WG_LOCAL_IP_ADDRESS;
     wg_config.allowed_ip_mask = CONFIG_WG_LOCAL_IP_NETMASK;
     wg_config.endpoint = CONFIG_WG_PEER_ADDRESS;
@@ -280,7 +286,7 @@ static void test_on_ping_success(esp_ping_handle_t hdl, void *args)
     esp_ping_get_profile(hdl, ESP_PING_PROF_IPADDR, &target_addr, sizeof(target_addr));
     esp_ping_get_profile(hdl, ESP_PING_PROF_SIZE, &recv_len, sizeof(recv_len));
     esp_ping_get_profile(hdl, ESP_PING_PROF_TIMEGAP, &elapsed_time, sizeof(elapsed_time));
-    ESP_LOGI(TAG, "%d bytes from %s icmp_seq=%d ttl=%d time=%d ms",
+    ESP_LOGI(TAG, "%" PRIu32 " bytes from %s icmp_seq=%" PRIu16 " ttl=%" PRIi8 " time=%" PRIu32 " ms",
            recv_len, ipaddr_ntoa(&target_addr), seqno, ttl, elapsed_time);
 }
 
@@ -290,7 +296,7 @@ static void test_on_ping_timeout(esp_ping_handle_t hdl, void *args)
     ip_addr_t target_addr;
     esp_ping_get_profile(hdl, ESP_PING_PROF_SEQNO, &seqno, sizeof(seqno));
     esp_ping_get_profile(hdl, ESP_PING_PROF_IPADDR, &target_addr, sizeof(target_addr));
-    ESP_LOGI(TAG, "From %s icmp_seq=%d timeout", ipaddr_ntoa(&target_addr), seqno);
+    ESP_LOGI(TAG, "From %s icmp_seq=%" PRIu16 " timeout", ipaddr_ntoa(&target_addr), seqno);
 }
 
 static void test_on_ping_end(esp_ping_handle_t hdl, void *args)
@@ -302,7 +308,7 @@ static void test_on_ping_end(esp_ping_handle_t hdl, void *args)
     esp_ping_get_profile(hdl, ESP_PING_PROF_REQUEST, &transmitted, sizeof(transmitted));
     esp_ping_get_profile(hdl, ESP_PING_PROF_REPLY, &received, sizeof(received));
     esp_ping_get_profile(hdl, ESP_PING_PROF_DURATION, &total_time_ms, sizeof(total_time_ms));
-    ESP_LOGI(TAG, "%d packets transmitted, %d received, time %dms", transmitted, received, total_time_ms);
+    ESP_LOGI(TAG, "%" PRIu32 " packets transmitted, %" PRIu32 " received, time %" PRIu32 "ms", transmitted, received, total_time_ms);
 }
 
 void start_ping()
@@ -343,6 +349,9 @@ void app_main(void)
     char strftime_buf[64];
     wireguard_ctx_t ctx = {0};
 
+    esp_log_level_set("esp_wireguard", ESP_LOG_DEBUG);
+    esp_log_level_set("wireguardif", ESP_LOG_DEBUG);
+    esp_log_level_set("wireguard", ESP_LOG_DEBUG);
     err = nvs_flash_init();
 #if defined(CONFIG_IDF_TARGET_ESP8266) && ESP_IDF_VERSION <= ESP_IDF_VERSION_VAL(3, 4, 0)
     if (err == ESP_ERR_NVS_NO_FREE_PAGES) {

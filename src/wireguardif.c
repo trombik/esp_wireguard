@@ -35,6 +35,7 @@
 
 #include <string.h>
 #include <stdlib.h>
+#include <inttypes.h>
 #include <lwip/netif.h>
 #include <lwip/ip.h>
 #include <lwip/udp.h>
@@ -56,7 +57,7 @@
 
 #define WIREGUARDIF_TIMER_MSECS 400
 
-#define TAG "wireguard"
+#define TAG "wireguardif"
 
 static void update_peer_addr(struct wireguard_peer *peer, const ip_addr_t *addr, u16_t port) {
 	peer->ip = *addr;
@@ -382,7 +383,7 @@ static struct pbuf *wireguardif_initiate_handshake(struct wireguard_device *devi
 	struct pbuf *pbuf = NULL;
 	err_t err = ERR_OK;
 	if (wireguard_create_handshake_initiation(device, peer, msg)) {
-		// Send this packet out!
+		ESP_LOGD(TAG, "sending initiation packet");
 		pbuf = pbuf_alloc(PBUF_TRANSPORT, sizeof(struct message_handshake_initiation), PBUF_RAM);
 		if (pbuf) {
 			err = pbuf_take(pbuf, msg, sizeof(struct message_handshake_initiation));
@@ -413,7 +414,7 @@ static void wireguardif_send_handshake_response(struct wireguard_device *device,
 
 		wireguard_start_session(peer, false);
 
-		// Send this packet out!
+		ESP_LOGD(TAG, "sending handshake response packet");
 		pbuf = pbuf_alloc(PBUF_TRANSPORT, sizeof(struct message_handshake_response), PBUF_RAM);
 		if (pbuf) {
 			err = pbuf_take(pbuf, &packet, sizeof(struct message_handshake_response));
@@ -623,6 +624,7 @@ static err_t wireguard_start_handshake(struct netif *netif, struct wireguard_pee
 	struct pbuf *pbuf;
 	struct message_handshake_initiation msg;
 
+	ESP_LOGD(TAG, "starting handshake");
 	pbuf = wireguardif_initiate_handshake(device, peer, &msg, &result);
 	if (pbuf) {
 		result = wireguardif_peer_output(netif, pbuf, peer);
@@ -630,7 +632,7 @@ static err_t wireguard_start_handshake(struct netif *netif, struct wireguard_pee
 #ifdef CONFIG_LWIP_DEBUG
 			ESP_LOGE(TAG, "wireguardif_peer_output: %s", lwip_strerr(result));
 #else
-			ESP_LOGE(TAG, "wireguardif_peer_output: %d", result);
+			ESP_LOGE(TAG, "wireguardif_peer_output: %i", result);
 #endif
 		}
 		pbuf_free(pbuf);
@@ -785,7 +787,7 @@ err_t wireguardif_add_peer(struct netif *netif, struct wireguardif_peer *p, u8_t
 	}
 
 	uint32_t t2 = wireguard_sys_now();
-	ESP_LOGD(TAG, "Adding peer took %ums", (t2-t1));
+	ESP_LOGD(TAG, "Adding peer took %" PRIu32 "ms", (t2-t1));
 
 	if (peer_index) {
 		if (peer) {
@@ -959,7 +961,7 @@ err_t wireguardif_init(struct netif *netif) {
 						uint32_t t1 = wireguard_sys_now();
 						if (wireguard_device_init(device, private_key)) {
 							uint32_t t2 = wireguard_sys_now();
-							ESP_LOGD(TAG, "Device init took %ums", (t2-t1));
+							ESP_LOGD(TAG, "Device init took %" PRIi32 "ms", (t2-t1));
 
 #if LWIP_CHECKSUM_CTRL_PER_NETIF
 							NETIF_SET_CHECKSUM_CTRL(netif, NETIF_CHECKSUM_ENABLE_ALL);
