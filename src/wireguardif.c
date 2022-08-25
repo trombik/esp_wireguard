@@ -56,7 +56,7 @@
 
 #define WIREGUARDIF_TIMER_MSECS 400
 
-#define TAG "wireguard"
+#define TAG "wireguardif"
 
 static void update_peer_addr(struct wireguard_peer *peer, const ip_addr_t *addr, u16_t port) {
 	peer->ip = *addr;
@@ -382,7 +382,7 @@ static struct pbuf *wireguardif_initiate_handshake(struct wireguard_device *devi
 	struct pbuf *pbuf = NULL;
 	err_t err = ERR_OK;
 	if (wireguard_create_handshake_initiation(device, peer, msg)) {
-		// Send this packet out!
+		ESP_LOGD(TAG, "sending initiation packet");
 		pbuf = pbuf_alloc(PBUF_TRANSPORT, sizeof(struct message_handshake_initiation), PBUF_RAM);
 		if (pbuf) {
 			err = pbuf_take(pbuf, msg, sizeof(struct message_handshake_initiation));
@@ -413,7 +413,7 @@ static void wireguardif_send_handshake_response(struct wireguard_device *device,
 
 		wireguard_start_session(peer, false);
 
-		// Send this packet out!
+		ESP_LOGD(TAG, "sending handshake response packet");
 		pbuf = pbuf_alloc(PBUF_TRANSPORT, sizeof(struct message_handshake_response), PBUF_RAM);
 		if (pbuf) {
 			err = pbuf_take(pbuf, &packet, sizeof(struct message_handshake_response));
@@ -623,6 +623,7 @@ static err_t wireguard_start_handshake(struct netif *netif, struct wireguard_pee
 	struct pbuf *pbuf;
 	struct message_handshake_initiation msg;
 
+	ESP_LOGD(TAG, "starting handshake");
 	pbuf = wireguardif_initiate_handshake(device, peer, &msg, &result);
 	if (pbuf) {
 		result = wireguardif_peer_output(netif, pbuf, peer);
