@@ -37,7 +37,9 @@
 #include <string.h>
 
 #include "crypto.h"
+#include <esp_log.h>
 
+#define TAG "wireguard"
 // For HMAC calculation
 #define WIREGUARD_BLAKE2S_BLOCK_SIZE (64)
 
@@ -55,7 +57,6 @@ static const uint8_t zero_key[WIREGUARD_PUBLIC_KEY_LEN] = { 0 };
 // Calculated in wireguard_init
 static uint8_t construction_hash[WIREGUARD_HASH_LEN];
 static uint8_t identifier_hash[WIREGUARD_HASH_LEN];
-
 
 void wireguard_init() {
 	wireguard_blake2s_ctx ctx;
@@ -628,16 +629,16 @@ struct wireguard_peer *wireguard_process_initiation_message(struct wireguard_dev
 						// Ignore
 					}
 				} else {
-					// Failed to decrypt
+					ESP_LOGE(TAG, "wireguard_process_initiation_message: failed to decrypt");
 				}
 			} else {
-				// peer not found
+				ESP_LOGE(TAG, "peer not found");
 			}
 		} else {
-			// Failed to decrypt
+			ESP_LOGE(TAG, "Failed to decrypt");
 		}
 	} else {
-		// Bad X25519
+		ESP_LOGE(TAG, "Bad X25519");
 	}
 
 	crypto_zero(key, sizeof(key));
@@ -712,15 +713,15 @@ bool wireguard_process_handshake_response(struct wireguard_device *device, struc
 
 					result = true;
 				} else {
-					// Decrypt failed
+					ESP_LOGE(TAG, "Decrypt failed");
 				}
 
 			} else {
-				// X25519 fail
+				ESP_LOGE(TAG, "X25519 fail");
 			}
 
 		} else {
-			// X25519 fail
+			ESP_LOGE(TAG, "X25519 fail 2");
 		}
 
 	}
