@@ -11,7 +11,7 @@ idf_component_register(
          "src/esp_wireguard.c"
     INCLUDE_DIRS "include"
     PRIV_INCLUDE_DIRS "src"
-    REQUIRES lwip mbedtls)
+    REQUIRES esp_netif lwip mbedtls)
 
 if(${IDF_VERSION_MAJOR} STREQUAL 5)
     set_source_files_properties(src/crypto/refc/x25519.c
