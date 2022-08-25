@@ -37,11 +37,14 @@
 #include <esp_err.h>
 #include <esp_log.h>
 #include <esp_wireguard.h>
+#include <mbedtls/base64.h>
 
 #include "wireguard-platform.h"
 #include "wireguardif.h"
 
 #define TAG "esp_wireguard"
+#define WG_KEY_LEN  (32)
+#define WG_B64_KEY_LEN (4 * ((WG_KEY_LEN + 2) / 3))
 #if defined(CONFIG_LWIP_IPV6)
 #define WG_ADDRSTRLEN  INET6_ADDRSTRLEN
 #else
@@ -52,6 +55,7 @@ static struct netif wg_netif_struct = {0};
 static struct netif *wg_netif = NULL;
 static struct wireguardif_peer peer = {0};
 static uint8_t wireguard_peer_index = WIREGUARDIF_INVALID_INDEX;
+static uint8_t preshared_key_decoded[WG_KEY_LEN];
 
 static esp_err_t esp_wireguard_peer_init(const wireguard_config_t *config, struct wireguardif_peer *peer)
 {
@@ -69,7 +73,25 @@ static esp_err_t esp_wireguard_peer_init(const wireguard_config_t *config, struc
     }
 
     peer->public_key = config->public_key;
-    peer->preshared_key = (uint8_t*)config->preshared_key;
+    if (config->preshared_key != NULL) {
+        size_t len;
+        int res;
+
+        ESP_LOGI(TAG, "using preshared_key");
+        ESP_LOGD(TAG, "preshared_key: %s", config->preshared_key);
+        res = mbedtls_base64_decode(preshared_key_decoded, WG_KEY_LEN, &len, (unsigned char *)config->preshared_key, WG_B64_KEY_LEN);
+        if (res != 0 || len != WG_KEY_LEN) {
+            err = ESP_FAIL;
+            ESP_LOGE(TAG, "base64_decode: %d", res);
+            if (len != WG_KEY_LEN) {
+                ESP_LOGE(TAG, "invalid decoded length, len: %d, should be %d", len, WG_KEY_LEN);
+            }
+            goto fail;
+        }
+        peer->preshared_key = preshared_key_decoded;
+    } else {
+        peer->preshared_key = NULL;
+    }
     peer->keep_alive = config->persistent_keepalive;
 
     /* Allow all IPs through tunnel */
