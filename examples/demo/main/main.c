@@ -7,6 +7,7 @@
    CONDITIONS OF ANY KIND, either express or implied.
 */
 #include <string.h>
+#include <inttypes.h>
 #include <time.h>
 #include <sys/time.h>
 #include <freertos/FreeRTOS.h>
@@ -285,7 +286,7 @@ static void test_on_ping_success(esp_ping_handle_t hdl, void *args)
     esp_ping_get_profile(hdl, ESP_PING_PROF_IPADDR, &target_addr, sizeof(target_addr));
     esp_ping_get_profile(hdl, ESP_PING_PROF_SIZE, &recv_len, sizeof(recv_len));
     esp_ping_get_profile(hdl, ESP_PING_PROF_TIMEGAP, &elapsed_time, sizeof(elapsed_time));
-    ESP_LOGI(TAG, "%d bytes from %s icmp_seq=%d ttl=%d time=%d ms",
+    ESP_LOGI(TAG, "%" PRIu32 " bytes from %s icmp_seq=%" PRIu16 " ttl=%" PRIi8 " time=%" PRIu32 " ms",
            recv_len, ipaddr_ntoa(&target_addr), seqno, ttl, elapsed_time);
 }
 
@@ -295,7 +296,7 @@ static void test_on_ping_timeout(esp_ping_handle_t hdl, void *args)
     ip_addr_t target_addr;
     esp_ping_get_profile(hdl, ESP_PING_PROF_SEQNO, &seqno, sizeof(seqno));
     esp_ping_get_profile(hdl, ESP_PING_PROF_IPADDR, &target_addr, sizeof(target_addr));
-    ESP_LOGI(TAG, "From %s icmp_seq=%d timeout", ipaddr_ntoa(&target_addr), seqno);
+    ESP_LOGI(TAG, "From %s icmp_seq=%" PRIu16 " timeout", ipaddr_ntoa(&target_addr), seqno);
 }
 
 static void test_on_ping_end(esp_ping_handle_t hdl, void *args)
@@ -307,7 +308,7 @@ static void test_on_ping_end(esp_ping_handle_t hdl, void *args)
     esp_ping_get_profile(hdl, ESP_PING_PROF_REQUEST, &transmitted, sizeof(transmitted));
     esp_ping_get_profile(hdl, ESP_PING_PROF_REPLY, &received, sizeof(received));
     esp_ping_get_profile(hdl, ESP_PING_PROF_DURATION, &total_time_ms, sizeof(total_time_ms));
-    ESP_LOGI(TAG, "%d packets transmitted, %d received, time %dms", transmitted, received, total_time_ms);
+    ESP_LOGI(TAG, "%" PRIu32 " packets transmitted, %" PRIu32 " received, time %" PRIu32 "ms", transmitted, received, total_time_ms);
 }
 
 void start_ping()

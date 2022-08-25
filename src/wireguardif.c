@@ -35,6 +35,7 @@
 
 #include <string.h>
 #include <stdlib.h>
+#include <inttypes.h>
 #include <lwip/netif.h>
 #include <lwip/ip.h>
 #include <lwip/udp.h>
@@ -631,7 +632,7 @@ static err_t wireguard_start_handshake(struct netif *netif, struct wireguard_pee
 #ifdef CONFIG_LWIP_DEBUG
 			ESP_LOGE(TAG, "wireguardif_peer_output: %s", lwip_strerr(result));
 #else
-			ESP_LOGE(TAG, "wireguardif_peer_output: %d", result);
+			ESP_LOGE(TAG, "wireguardif_peer_output: %i", result);
 #endif
 		}
 		pbuf_free(pbuf);
@@ -786,7 +787,7 @@ err_t wireguardif_add_peer(struct netif *netif, struct wireguardif_peer *p, u8_t
 	}
 
 	uint32_t t2 = wireguard_sys_now();
-	ESP_LOGD(TAG, "Adding peer took %ums", (t2-t1));
+	ESP_LOGD(TAG, "Adding peer took %" PRIu32 "ms", (t2-t1));
 
 	if (peer_index) {
 		if (peer) {
@@ -960,7 +961,7 @@ err_t wireguardif_init(struct netif *netif) {
 						uint32_t t1 = wireguard_sys_now();
 						if (wireguard_device_init(device, private_key)) {
 							uint32_t t2 = wireguard_sys_now();
-							ESP_LOGD(TAG, "Device init took %ums", (t2-t1));
+							ESP_LOGD(TAG, "Device init took %" PRIi32 "ms", (t2-t1));
 
 #if LWIP_CHECKSUM_CTRL_PER_NETIF
 							NETIF_SET_CHECKSUM_CTRL(netif, NETIF_CHECKSUM_ENABLE_ALL);
