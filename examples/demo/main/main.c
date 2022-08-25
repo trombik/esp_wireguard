@@ -57,6 +57,11 @@ static esp_err_t wireguard_setup(wireguard_ctx_t* ctx)
     wg_config.private_key = CONFIG_WG_PRIVATE_KEY;
     wg_config.listen_port = CONFIG_WG_LOCAL_PORT;
     wg_config.public_key = CONFIG_WG_PEER_PUBLIC_KEY;
+    if (strcmp(CONFIG_WG_PRESHARED_KEY, "") != 0) {
+        wg_config.preshared_key = CONFIG_WG_PRESHARED_KEY;
+    } else {
+        wg_config.preshared_key = NULL;
+    }
     wg_config.allowed_ip = CONFIG_WG_LOCAL_IP_ADDRESS;
     wg_config.allowed_ip_mask = CONFIG_WG_LOCAL_IP_NETMASK;
     wg_config.endpoint = CONFIG_WG_PEER_ADDRESS;
@@ -343,6 +348,9 @@ void app_main(void)
     char strftime_buf[64];
     wireguard_ctx_t ctx = {0};
 
+    esp_log_level_set("esp_wireguard", ESP_LOG_DEBUG);
+    esp_log_level_set("wireguardif", ESP_LOG_DEBUG);
+    esp_log_level_set("wireguard", ESP_LOG_DEBUG);
     err = nvs_flash_init();
 #if defined(CONFIG_IDF_TARGET_ESP8266) && ESP_IDF_VERSION <= ESP_IDF_VERSION_VAL(3, 4, 0)
     if (err == ESP_ERR_NVS_NO_FREE_PAGES) {
