@@ -9,6 +9,7 @@ idf_component_register(
          "src/crypto/refc/poly1305-donna.c"
          "src/crypto/refc/x25519.c"
          "src/esp_wireguard.c"
+         "src/nacl/crypto_scalarmult/curve25519/ref/smult.c"
     INCLUDE_DIRS "include"
     PRIV_INCLUDE_DIRS "src"
     REQUIRES esp_netif lwip mbedtls)

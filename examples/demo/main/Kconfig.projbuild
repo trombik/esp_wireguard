@@ -21,7 +21,7 @@ menu "Example Configuration"
 
     config WG_PRIVATE_KEY
         string "Wireguard Private Key"
-        default "IlLYVwKnmB7PM+4U3y2KYQfPQk0FCccbunFvkSiIn3Y="
+        default "IsvT72MAXzA8EtV0FSD1QT59B4x0oe6Uea5rd/dDzhE="
         help
             Private key of the WireGuard device.
 

@@ -18,8 +18,15 @@ extern "C" {
 #define wireguard_blake2s(out,outlen,key,keylen,in,inlen) blake2s(out,outlen,key,keylen,in,inlen)
 
 // X25519 IMPLEMENTATION
+#if defined(CONFIG_WIREGUARD_x25519_IMPLEMENTATION_DEFAULT)
 #include "crypto/refc/x25519.h"
 #define wireguard_x25519(a,b,c)	x25519(a,b,c,1)
+#endif
+
+#if defined(CONFIG_WIREGUARD_x25519_IMPLEMENTATION_NACL)
+#include "nacl/crypto_scalarmult/curve25519/ref/crypto_scalarmult.h"
+#define wireguard_x25519(a,b,c)	crypto_scalarmult(a,b,c)
+#endif
 
 //#include "crypto/cortex/scalarmult.h"
 //#define wireguard_x25519(a,b,c)	crypto_scalarmult_curve25519(a,b,c)

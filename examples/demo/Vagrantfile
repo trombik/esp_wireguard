@@ -50,8 +50,8 @@
 #
 # Below is the default configuration of the example.
 #
-# client secret key: IlLYVwKnmB7PM+4U3y2KYQfPQk0FCccbunFvkSiIn3Y=
-# client public key: P3IiNMO9ZrKXp7kX/J0RVzgFwouWprYTjea/kMm36wA=
+# client secret key: IsvT72MAXzA8EtV0FSD1QT59B4x0oe6Uea5rd/dDzhE=
+# client public key: uyCfLulk5l7Bv/yCJ0nm1J3VL71YU4LISK/EHhwe43g=
 #
 # server secret key: iN8Rsdc10MFjkeqJ352OvtoMhkG5AFZWc/k4cS9odHM=
 # server public key: FjrsQ/HD1Q8fUlFILIasDlOuajMeZov4NGqMJpkswiw=
@@ -96,7 +96,7 @@ Vagrant.configure("2") do |config|
     echo "debug" >> /etc/hostname.wg0
     echo "wgkey iN8Rsdc10MFjkeqJ352OvtoMhkG5AFZWc/k4cS9odHM= wgport 12912" >> /etc/hostname.wg0
     echo "inet 192.168.4.254 255.255.255.0" >> /etc/hostname.wg0
-    echo "wgpeer P3IiNMO9ZrKXp7kX/J0RVzgFwouWprYTjea/kMm36wA= wgaip 192.168.4.58/32 wgpsk 0/2H97Sd5EJ9LAAAYUglVjPYv7ihNIm/ziuv6BtSI50=" >> /etc/hostname.wg0
+    echo "wgpeer uyCfLulk5l7Bv/yCJ0nm1J3VL71YU4LISK/EHhwe43g= wgaip 192.168.4.58/32 wgpsk 0/2H97Sd5EJ9LAAAYUglVjPYv7ihNIm/ziuv6BtSI50=" >> /etc/hostname.wg0
     sh /etc/netstart wg0 start
   SHELL
 end

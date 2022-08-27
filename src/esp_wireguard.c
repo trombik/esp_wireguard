@@ -80,6 +80,11 @@ static esp_err_t esp_wireguard_peer_init(const wireguard_config_t *config, struc
 
         ESP_LOGI(TAG, "using preshared_key");
         ESP_LOGD(TAG, "preshared_key: %s", config->preshared_key);
+#if defined(CONFIG_WIREGUARD_x25519_IMPLEMENTATION_DEFAULT)
+        ESP_LOGI(TAG, "X25519: default");
+#elif defined(CONFIG_WIREGUARD_x25519_IMPLEMENTATION_NACL)
+        ESP_LOGI(TAG, "X25519: NaCL");
+#endif
         res = mbedtls_base64_decode(preshared_key_decoded, WG_KEY_LEN, &len, (unsigned char *)config->preshared_key, WG_B64_KEY_LEN);
         if (res != 0 || len != WG_KEY_LEN) {
             err = ESP_FAIL;
