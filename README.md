@@ -127,7 +127,11 @@ but there are others issues, not directly related to the library.
 BSD 3-Clause "New" or "Revised" License (SPDX ID: BSD-3-Clause).
 See [LICENSE](LICENSE) for details.
 
+[src/nacl/crypto_scalarmult/curve25519/ref/smult.c] is Public domain.
+
 ## Authors
 
 * Daniel Hope (daniel.hope@smartalock.com)
 * Kenta Ida (fuga@fugafuga.org)
+* Matthew Dempsky
+* D. J. Bernstein
