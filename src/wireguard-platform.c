@@ -1,6 +1,7 @@
 #include "wireguard-platform.h"
 
 #include <stdlib.h>
+#include <inttypes.h>
 #include <lwip/sys.h>
 #include <mbedtls/entropy.h>
 #include <mbedtls/ctr_drbg.h>
@@ -38,7 +39,7 @@ esp_err_t wireguard_platform_init() {
 			ENTROPY_MINIMUM_REQUIRED_THRESHOLD,
 			MBEDTLS_ENTROPY_SOURCE_STRONG);
 	if (mbedtls_err != 0) {
-		ESP_LOGE(TAG, "mbedtls_entropy_add_source: %d", mbedtls_err);
+		ESP_LOGE(TAG, "mbedtls_entropy_add_source: %i", mbedtls_err);
 		err = ESP_FAIL;
 		goto fail;
 	}
@@ -49,7 +50,7 @@ esp_err_t wireguard_platform_init() {
 			ENTROPY_CUSTOM_DATA,
 			ENTROPY_CUSTOM_DATA_LENGTH);
 	if (mbedtls_err != 0) {
-		ESP_LOGE(TAG, "mbedtls_ctr_drbg_seed: %d", mbedtls_err);
+		ESP_LOGE(TAG, "mbedtls_ctr_drbg_seed: %i", mbedtls_err);
 		err = ESP_FAIL;
 		goto fail;
 	}

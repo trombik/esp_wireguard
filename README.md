@@ -93,6 +93,21 @@ Enable `CONFIG_LWIP_IPV6` under `lwip` component in `menuconfig`.
 
 IPv6 support is alpha and probably broken. See also Known issues.
 
+## Driver configuration
+
+The driver configuration is under `[Component config]` -> `[WireGuard]`.
+
+Under `WIREGUARD_x25519_IMPLEMENTATION`, you may choose an implementation of
+scalar multiplication. The default is
+`WIREGUARD_x25519_IMPLEMENTATION_DEFAULT`, which is derived from
+[WireGuard Implementation for lwIP](https://github.com/smartalock/wireguard-lwip).
+`WIREGUARD_x25519_IMPLEMENTATION_NACL` uses
+[crypto_scalarmult()](https://nacl.cr.yp.to/scalarmult.html) from NaCL. Note
+that, with `WIREGUARD_x25519_IMPLEMENTATION_NACL`,
+some stack sizes must be increased.  In my test, 5KB for both
+`CONFIG_LWIP_TCPIP_TASK_STACK_SIZE`, and `CONFIG_MAIN_TASK_STACK_SIZE` is
+known to work on `ESP32-D0WD-V3`.
+
 ## Known issues
 
 The implementation uses `LwIP` as TCP/IP protocol stack.
@@ -112,7 +127,11 @@ but there are others issues, not directly related to the library.
 BSD 3-Clause "New" or "Revised" License (SPDX ID: BSD-3-Clause).
 See [LICENSE](LICENSE) for details.
 
+[src/nacl/crypto_scalarmult/curve25519/ref/smult.c] is Public domain.
+
 ## Authors
 
 * Daniel Hope (daniel.hope@smartalock.com)
 * Kenta Ida (fuga@fugafuga.org)
+* Matthew Dempsky
+* D. J. Bernstein

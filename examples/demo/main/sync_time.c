@@ -1,4 +1,5 @@
 #include <time.h>
+#include <inttypes.h>
 #include <esp_sntp.h>
 #include <esp_log.h>
 
@@ -30,7 +31,7 @@ void obtain_time(void)
 
 	initialize_sntp();
 	while (sntp_get_sync_status() == SNTP_SYNC_STATUS_RESET && ++retry < retry_count) {
-		ESP_LOGI(TAG, "Waiting for system time to be set... (%d/%d)", retry, retry_count);
+		ESP_LOGI(TAG, "Waiting for system time to be set... (%i/%i)", retry, retry_count);
 		vTaskDelay(2000 / portTICK_PERIOD_MS);
 	}
 }

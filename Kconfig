@@ -22,4 +22,12 @@ config MAX_INITIATIONS_PER_SECOND
     default 2
     help
         Per device limit on accepting (valid) initiation requests - per peer.
+choice WIREGUARD_x25519_IMPLEMENTATION
+    prompt "x25519 implementation to use"
+    default WIREGUARD_x25519_IMPLEMENTATION_DEFAULT
+    config WIREGUARD_x25519_IMPLEMENTATION_DEFAULT
+        bool "Default (originally from wireguard-lwip)"
+    config WIREGUARD_x25519_IMPLEMENTATION_NACL
+        bool "NaCL"
+endchoice
 endmenu

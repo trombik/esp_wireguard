@@ -31,17 +31,21 @@
 
 #include <assert.h>
 #include <string.h>
+#include <inttypes.h>
 #include <lwip/ip.h>
 #include <lwip/netdb.h>
 #include <lwip/err.h>
 #include <esp_err.h>
 #include <esp_log.h>
 #include <esp_wireguard.h>
+#include <mbedtls/base64.h>
 
 #include "wireguard-platform.h"
 #include "wireguardif.h"
 
 #define TAG "esp_wireguard"
+#define WG_KEY_LEN  (32)
+#define WG_B64_KEY_LEN (4 * ((WG_KEY_LEN + 2) / 3))
 #if defined(CONFIG_LWIP_IPV6)
 #define WG_ADDRSTRLEN  INET6_ADDRSTRLEN
 #else
@@ -52,6 +56,7 @@ static struct netif wg_netif_struct = {0};
 static struct netif *wg_netif = NULL;
 static struct wireguardif_peer peer = {0};
 static uint8_t wireguard_peer_index = WIREGUARDIF_INVALID_INDEX;
+static uint8_t preshared_key_decoded[WG_KEY_LEN];
 
 static esp_err_t esp_wireguard_peer_init(const wireguard_config_t *config, struct wireguardif_peer *peer)
 {
@@ -69,7 +74,30 @@ static esp_err_t esp_wireguard_peer_init(const wireguard_config_t *config, struc
     }
 
     peer->public_key = config->public_key;
-    peer->preshared_key = (uint8_t*)config->preshared_key;
+    if (config->preshared_key != NULL) {
+        size_t len;
+        int res;
+
+        ESP_LOGI(TAG, "using preshared_key");
+        ESP_LOGD(TAG, "preshared_key: %s", config->preshared_key);
+#if defined(CONFIG_WIREGUARD_x25519_IMPLEMENTATION_DEFAULT)
+        ESP_LOGI(TAG, "X25519: default");
+#elif defined(CONFIG_WIREGUARD_x25519_IMPLEMENTATION_NACL)
+        ESP_LOGI(TAG, "X25519: NaCL");
+#endif
+        res = mbedtls_base64_decode(preshared_key_decoded, WG_KEY_LEN, &len, (unsigned char *)config->preshared_key, WG_B64_KEY_LEN);
+        if (res != 0 || len != WG_KEY_LEN) {
+            err = ESP_FAIL;
+            ESP_LOGE(TAG, "base64_decode: %i", res);
+            if (len != WG_KEY_LEN) {
+                ESP_LOGE(TAG, "invalid decoded length, len: %u, should be %u", len, WG_KEY_LEN);
+            }
+            goto fail;
+        }
+        peer->preshared_key = preshared_key_decoded;
+    } else {
+        peer->preshared_key = NULL;
+    }
     peer->keep_alive = config->persistent_keepalive;
 
     /* Allow all IPs through tunnel */
@@ -106,9 +134,9 @@ static esp_err_t esp_wireguard_peer_init(const wireguard_config_t *config, struc
         peer->endpoint_ip = endpoint_ip;
 
         if (inet_ntop(res->ai_family, &(peer->endpoint_ip), addr_str, WG_ADDRSTRLEN) == NULL) {
-            ESP_LOGW(TAG, "inet_ntop: %d", errno);
+            ESP_LOGW(TAG, "inet_ntop: %i", errno);
         } else {
-            ESP_LOGI(TAG, "Peer: %s (%s:%d)",
+            ESP_LOGI(TAG, "Peer: %s (%s:%i)",
                                             config->endpoint,
                                             addr_str,
                                             config->port);
@@ -225,7 +253,7 @@ esp_err_t esp_wireguard_connect(wireguard_ctx_t *ctx)
         /* Register the new WireGuard peer with the network interface */
         lwip_err = wireguardif_add_peer(wg_netif, &peer, &wireguard_peer_index);
         if (lwip_err != ERR_OK || wireguard_peer_index == WIREGUARDIF_INVALID_INDEX) {
-            ESP_LOGE(TAG, "wireguardif_add_peer: %d", lwip_err);
+            ESP_LOGE(TAG, "wireguardif_add_peer: %i", lwip_err);
             goto fail;
         }
         if (ip_addr_isany(&peer.endpoint_ip)) {
@@ -236,10 +264,10 @@ esp_err_t esp_wireguard_connect(wireguard_ctx_t *ctx)
         ctx->netif_default = netif_default;
     }
 
-    ESP_LOGI(TAG, "Connecting to %s:%d", ctx->config->endpoint, ctx->config->port);
+    ESP_LOGI(TAG, "Connecting to %s:%i", ctx->config->endpoint, ctx->config->port);
     lwip_err = wireguardif_connect(wg_netif, wireguard_peer_index);
     if (lwip_err != ERR_OK) {
-        ESP_LOGE(TAG, "wireguardif_connect: %d", lwip_err);
+        ESP_LOGE(TAG, "wireguardif_connect: %i", lwip_err);
         err = ESP_FAIL;
         goto fail;
     }
@@ -273,12 +301,12 @@ esp_err_t esp_wireguard_disconnect(wireguard_ctx_t *ctx)
 
     lwip_err = wireguardif_disconnect(ctx->netif, wireguard_peer_index);
     if (lwip_err != ERR_OK) {
-        ESP_LOGW(TAG, "wireguardif_disconnect: peer_index: %d err: %d", wireguard_peer_index, lwip_err);
+        ESP_LOGW(TAG, "wireguardif_disconnect: peer_index: %" PRIu8 " err: %i", wireguard_peer_index, lwip_err);
     }
 
     lwip_err = wireguardif_remove_peer(ctx->netif, wireguard_peer_index);
     if (lwip_err != ERR_OK) {
-        ESP_LOGW(TAG, "wireguardif_remove_peer: peer_index: %d err: %d", wireguard_peer_index, lwip_err);
+        ESP_LOGW(TAG, "wireguardif_remove_peer: peer_index: %" PRIu8 " err: %i", wireguard_peer_index, lwip_err);
     }
 
     wireguard_peer_index = WIREGUARDIF_INVALID_INDEX;
