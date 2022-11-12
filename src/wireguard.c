@@ -325,6 +325,9 @@ bool wireguard_check_replay(struct wireguard_keypair *keypair, uint64_t seq) {
 	bool result = false;
 	size_t ReplayWindowSize = sizeof(keypair->replay_bitmap) * CHAR_BIT; // 32 bits
 
+	// WireGuard data packet counter starts from 0 but algorithm expects packet numbers to start from 1
+	seq++;
+
 	if (seq != 0) {
 		if (seq > keypair->replay_counter) {
 			// new larger sequence number
