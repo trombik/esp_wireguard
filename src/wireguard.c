@@ -35,6 +35,7 @@
 #include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
+#include <limits.h>
 
 #include "crypto.h"
 #include <esp_log.h>
@@ -322,7 +323,10 @@ bool wireguard_check_replay(struct wireguard_keypair *keypair, uint64_t seq) {
 	// Adapted from code in Appendix C at https://tools.ietf.org/html/rfc2401
 	uint32_t diff;
 	bool result = false;
-	size_t ReplayWindowSize = sizeof(keypair->replay_bitmap); // 32 bits
+	size_t ReplayWindowSize = sizeof(keypair->replay_bitmap) * CHAR_BIT; // 32 bits
+
+	// WireGuard data packet counter starts from 0 but algorithm expects packet numbers to start from 1
+	seq++;
 
 	if (seq != 0) {
 		if (seq > keypair->replay_counter) {
