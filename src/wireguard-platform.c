@@ -1,6 +1,7 @@
 #include "wireguard-platform.h"
 
 #include <stdlib.h>
+#include <time.h>
 #include <inttypes.h>
 #include <lwip/sys.h>
 #include <mbedtls/entropy.h>
@@ -73,11 +74,11 @@ void wireguard_tai64n_now(uint8_t *output) {
 	// 64 bit seconds from 1970 = 8 bytes
 	// 32 bit nano seconds from current second
 
-	uint64_t millis = sys_now();
+	struct timeval tv;
+	gettimeofday(&tv, NULL);
 
-	// Split into seconds offset + nanos
-	uint64_t seconds = 0x400000000000000aULL + (millis / 1000);
-	uint32_t nanos = (millis % 1000) * 1000;
+	uint64_t seconds = 0x400000000000000aULL + tv.tv_sec;
+	uint32_t nanos = tv.tv_usec * 1000;
 	U64TO8_BIG(output + 0, seconds);
 	U32TO8_BIG(output + 8, nanos);
 }
