@@ -1,6 +1,6 @@
 {
    "name": "esp_wireguard",
-   "version": "0.0.0-dev3",
+   "version": "0.0.0-dev4",
    "description": "WireGuard implementation for esp-idf",
    "keywords":[
       "wireguard",
