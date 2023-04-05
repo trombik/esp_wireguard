@@ -242,6 +242,9 @@ esp_err_t esp_wireguard_connect(wireguard_ctx_t *ctx)
             ESP_LOGE(TAG, "esp_wireguard_netif_create: %s", esp_err_to_name(err));
             goto fail;
         }
+        ctx->netif = wg_netif;
+        ctx->netif_default = netif_default;
+    }
 
         /* Initialize the first WireGuard peer structure */
         err = esp_wireguard_peer_init(ctx->config, &peer);
@@ -251,7 +254,7 @@ esp_err_t esp_wireguard_connect(wireguard_ctx_t *ctx)
         }
 
         /* Register the new WireGuard peer with the network interface */
-        lwip_err = wireguardif_add_peer(wg_netif, &peer, &wireguard_peer_index);
+        lwip_err = wireguardif_add_peer(ctx->netif, &peer, &wireguard_peer_index);
         if (lwip_err != ERR_OK || wireguard_peer_index == WIREGUARDIF_INVALID_INDEX) {
             ESP_LOGE(TAG, "wireguardif_add_peer: %i", lwip_err);
             goto fail;
@@ -260,12 +263,9 @@ esp_err_t esp_wireguard_connect(wireguard_ctx_t *ctx)
             err = ESP_FAIL;
             goto fail;
         }
-        ctx->netif = wg_netif;
-        ctx->netif_default = netif_default;
-    }
 
     ESP_LOGI(TAG, "Connecting to %s:%i", ctx->config->endpoint, ctx->config->port);
-    lwip_err = wireguardif_connect(wg_netif, wireguard_peer_index);
+    lwip_err = wireguardif_connect(ctx->netif, wireguard_peer_index);
     if (lwip_err != ERR_OK) {
         ESP_LOGE(TAG, "wireguardif_connect: %i", lwip_err);
         err = ESP_FAIL;
