@@ -64,7 +64,7 @@ wg_config.port = CONFIG_WG_PEER_PORT;
    persistent_keepalive is disabled by default */
 // wg_config.persistent_keepalive = 10;
 
-wireguard_ctx_t ctx = {0};
+wireguard_ctx_t ctx = ESP_WIREGUARD_CONTEXT_DEFAULT();
 err = esp_wireguard_init(&wg_config, &ctx);
 
 /* start establishing the link. after this call, esp_wireguard start
@@ -135,3 +135,5 @@ See [LICENSE](LICENSE) for details.
 * Kenta Ida (fuga@fugafuga.org)
 * Matthew Dempsky
 * D. J. Bernstein
+* Tomoyuki Sakurai (y@trombik.org)
+* Simone Rossetto (simros85@gmail.com)

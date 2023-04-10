@@ -1,7 +1,7 @@
 {
    "name": "esp_wireguard",
    "version": "0.0.0-dev4",
-   "description": "WireGuard implementation for esp-idf",
+   "description": "WireGuard implementation for esphome",
    "keywords":[
       "wireguard",
       "esp32",
@@ -17,7 +17,7 @@
       {
          "name": "Daniel Hope",
          "email": "daniel.hope@smartalock.com",
-         "url": "http://www.floorsense.nz/"
+         "url": "https://github.com/smartalock"
       },
       {
          "name": "Kenta Ida",
@@ -26,7 +26,7 @@
       {
          "name": "Tomoyuki Sakurai",
          "email": "y@trombik.org",
-         "url": "http://info.mkrsgh.org/makerspace/"
+         "url": "https://github.com/trombik"
       },
       {
          "name": "Matthew Dempsky"
@@ -42,7 +42,9 @@
    ],
    "license": "BSD-3-Clause",
    "frameworks":[
-      "espidf"
+      "esp8266-rtos-sdk",
+      "espidf",
+      "arduino"
    ],
    "include":[
       "include/*",
