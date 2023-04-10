@@ -197,6 +197,10 @@ static err_t wireguardif_output_to_peer(struct netif *netif, struct pbuf *q, con
 // This is used as the output function for the Wireguard netif
 // The ipaddr here is the one inside the VPN which we use to lookup the correct peer/endpoint
 static err_t wireguardif_output(struct netif *netif, struct pbuf *q, const ip4_addr_t *ip4addr) {
+	if (netif->state == NULL) {
+		// maybe the underlying interface has already been deactivated?
+		return ERR_IF;
+	}
 	struct wireguard_device *device = (struct wireguard_device *)netif->state;
 	// Send to peer that matches dest IP
 	ip_addr_t ipaddr;
