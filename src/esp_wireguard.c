@@ -299,6 +299,10 @@ esp_err_t esp_wireguard_disconnect(wireguard_ctx_t *ctx)
         goto fail;
     }
 
+    // Clear the IP address to gracefully disconnect any clients while the
+    // peers are still valid
+    netif_set_ipaddr(ctx->netif, IP4_ADDR_ANY4);
+
     lwip_err = wireguardif_disconnect(ctx->netif, wireguard_peer_index);
     if (lwip_err != ERR_OK) {
         ESP_LOGW(TAG, "wireguardif_disconnect: peer_index: %" PRIu8 " err: %i", wireguard_peer_index, lwip_err);
@@ -312,6 +316,7 @@ esp_err_t esp_wireguard_disconnect(wireguard_ctx_t *ctx)
     wireguard_peer_index = WIREGUARDIF_INVALID_INDEX;
     wireguardif_shutdown(ctx->netif);
     netif_remove(ctx->netif);
+    wireguardif_fini(ctx->netif);
     netif_set_default(ctx->netif_default);
     ctx->netif = NULL;
 
