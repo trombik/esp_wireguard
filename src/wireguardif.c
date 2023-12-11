@@ -903,9 +903,27 @@ err_t wireguardif_init(struct netif *netif) {
 
 #if defined(CONFIG_WIREGUARD_ESP_NETIF)
 	struct netif* underlying_netif = NULL;
+	esp_netif_t *cursor = NULL;
+	esp_netif_t *highest_prio_netif = NULL;
+	int max_prio = -1;
+	for (int i = 0; i < esp_netif_get_nr_of_ifs(); i++) {
+		cursor = esp_netif_next(cursor);
+		if (!cursor || !esp_netif_is_netif_up(cursor)) {
+			continue;
+		}
+		int gateway_prio = esp_netif_get_route_prio(cursor);
+		if (gateway_prio > max_prio) {
+			highest_prio_netif = cursor;
+			max_prio = gateway_prio;
+		}
+	}
+	if (highest_prio_netif == NULL) {
+		ESP_LOGE(TAG, "prio_search: cannot find a suitable network interface");
+		result = ERR_IF;
+		goto fail;
+	}
 	char lwip_netif_name[8] = {0,};
-
-	err = esp_netif_get_netif_impl_name(esp_netif_get_handle_from_ifkey("WIFI_STA_DEF"), lwip_netif_name);
+	err = esp_netif_get_netif_impl_name(highest_prio_netif, lwip_netif_name);
 	if (err != ESP_OK) {
 		ESP_LOGE(TAG, "esp_netif_get_netif_impl_name: %s", esp_err_to_name(err));
 		result = ERR_IF;
@@ -913,7 +931,7 @@ err_t wireguardif_init(struct netif *netif) {
 	}
 	underlying_netif = netif_find(lwip_netif_name);
 	if (underlying_netif == NULL) {
-		ESP_LOGE(TAG, "netif_find: cannot find WIFI_STA_DEF");
+		ESP_LOGE(TAG, "netif_find: cannot find an underlying netif");
 		result = ERR_IF;
 		goto fail;
 	}
