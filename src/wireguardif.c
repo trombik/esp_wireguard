@@ -55,6 +55,8 @@
 #include "wireguard.h"
 #include "crypto.h"
 
+#include "derp.h"
+
 #define WIREGUARDIF_TIMER_MSECS 400
 
 #define TAG "wireguardif"
@@ -850,6 +852,8 @@ static void wireguardif_tmr(void *arg) {
 	int x;
 	// Reschedule this timer
 	sys_timeout(WIREGUARDIF_TIMER_MSECS, wireguardif_tmr, device);
+
+	derp_tick(device);
 
 	// Check periodic things
 	bool link_up = false;

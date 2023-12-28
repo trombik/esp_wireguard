@@ -45,6 +45,7 @@ extern "C" {
 // Note: these are only required for definitions in device/peer for netif, udp_pcb, ip_addr_t and u16_t
 #include "lwip/netif.h"
 #include "lwip/udp.h"
+#include "lwip/tcp.h"
 #include "lwip/ip_addr.h"
 #include "lwip/arch.h"
 
@@ -172,6 +173,18 @@ struct wireguard_peer {
 	bool send_handshake;
 };
 
+// DERP state
+struct derp_state_t {
+    struct tcp_pcb* tcp;
+    enum {
+        CONN_STATE_TCP_DISCONNECTED = 0,
+        CONN_STATE_TCP_CONNECTING,
+        CONN_STATE_HTTP_GET_REQ,
+        CONN_STATE_HTTP_KEY_EXHCANGE,
+        CONN_STATE_DERP_READY,
+    } conn_state;
+};
+
 struct wireguard_device {
 	// Maybe have a "Device private" member to abstract these?
 	struct netif *netif;
@@ -193,6 +206,9 @@ struct wireguard_device {
  	struct wireguard_peer peers[WIREGUARD_MAX_PEERS];
 
 	bool valid;
+
+    // DERP state
+    struct derp_state_t derp;
 };
 
 #define MESSAGE_INVALID					0
