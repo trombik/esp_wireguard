@@ -13,6 +13,7 @@
 #include <esp_log.h>
 #include <esp_err.h>
 #include "crypto.h"
+#include "sodium.h"
 
 #define WIREGUARDIF_TIMER_MSECS 400
 
@@ -96,11 +97,43 @@ err_t tcp_recv_callback(void *arg, struct tcp_pcb *tcp, struct pbuf *buf, err_t 
 		return ESP_OK;
 	}
 
-	err = derp_key_exchange(dev, buf);
-	if (err != ESP_OK) {
-		derp_shutdown_connection(dev);
-		return ESP_OK;
+	// This packet is only valid in CONN_STATE_HTTP_KEY_EXHCANGE or CONN_STATE_DERP_READY
+	struct derp_pkt *pkt = (struct derp_pkt*)buf->payload;
+
+	switch (dev->derp.conn_state) {
+		case CONN_STATE_TCP_DISCONNECTED:
+		case CONN_STATE_TCP_CONNECTING:
+			ESP_LOGE(TAG, "Received packet during unexpected state: %d", dev->derp.conn_state);
+			break;
+
+		case CONN_STATE_HTTP_GET_REQ:
+			err = derp_key_exchange(dev, buf);
+			if (err != ESP_OK) {
+				ESP_LOGE(TAG, "Error while processing key exchange packets, resetting DERP conn");
+				derp_shutdown_connection(dev);
+				return ESP_OK;
+			}
+			break;
+
+		case CONN_STATE_HTTP_KEY_EXHCANGE:
+			if (pkt->type == 3) {
+				ESP_LOGE(TAG, "Received packet of type %d in KeyExchange state, DERP connection established succesfully", pkt->type);
+				// This message is not super useful for us, so we will just ignore it :P
+				dev->derp.conn_state = CONN_STATE_DERP_READY;
+			}
+			break;
+
+		case CONN_STATE_DERP_READY:
+			ESP_LOGE(TAG, "Received packet of type %d in READY state", pkt->type);
+
+			break;
 	}
+
+	// Acknowledge all of the received bytes
+	tcp_recved(dev->derp.tcp, buf->tot_len);
+
+	// Free the pbuf, as everything went fine
+	pbuf_free(buf);
 
 	return ESP_OK;
 }
@@ -190,6 +223,7 @@ err_t derp_send_http_upgrade_request(struct wireguard_device *dev) {
 }
 
 err_t derp_key_exchange(struct wireguard_device *dev, struct pbuf *buf) {
+	err_t err = ESP_FAIL;
 
 	// pbuf contains HTTP response and first WebSocket packet
 	// Ensure server is ok with upgrading protocol
@@ -216,12 +250,51 @@ err_t derp_key_exchange(struct wireguard_device *dev, struct pbuf *buf) {
 		return ESP_FAIL;
 	}
 
-	struct derp_pkt *packet = (struct derp_pkt*)(&((uint8_t*)buf->payload)[idx]);
-	ESP_LOGE(TAG, "Received server key packet:");
-	ESP_LOGE(TAG, "    type      : %d", packet->type);
-	ESP_LOGE(TAG, "    length    : %d", BE32_TO_LE32(packet->length_be));
-	ESP_LOGE(TAG, "    magic     : %s", packet->payload.server_key.magic);
-	ESP_LOGE(TAG, "    public_key: %s", packet->payload.server_key.server_public_key);
+	struct derp_pkt *server_key_pkt = (struct derp_pkt*)(&((uint8_t*)buf->payload)[idx]);
+	ESP_LOGE(TAG, "Received server key server_key_pkt:");
+	ESP_LOGE(TAG, "    type      : %d", server_key_pkt->type);
+	ESP_LOGE(TAG, "    length    : %d", BE32_TO_LE32(server_key_pkt->length_be));
+	ESP_LOGE(TAG, "    magic     : %s", server_key_pkt->server_key.magic);
+	ESP_LOGE(TAG, "    public_key: %s", server_key_pkt->server_key.server_public_key);
+
+	//TODO: Validate that the server key is in
+	//      fact matching the one provided via config
+
+	// Prepare client_key packet
+	struct derp_pkt client_key_pkt;
+	memset(&client_key_pkt, 0, sizeof(client_key_pkt));
+
+	const char* plaintext = "{\"version\": 2, \"meshKey\": \"\"}";
+	client_key_pkt.type = 2; // Client-Key packet
+	client_key_pkt.length_be = BE32_TO_LE32(101);
+	memcpy(client_key_pkt.client_key.client_public_key, dev->public_key, sizeof(client_key_pkt.client_key.client_public_key));
+	randombytes_buf(client_key_pkt.client_key.nonce, sizeof(client_key_pkt.client_key.nonce));
+
+	ESP_LOGE(TAG, "Attempting to encrypt the plaintext for client-key");
+	err = crypto_box_easy(client_key_pkt.client_key.ciphertext,
+			plaintext, strlen(plaintext),
+			client_key_pkt.client_key.nonce,
+			server_key_pkt->server_key.server_public_key,
+			dev->private_key);
+	if (err != 0) {
+		ESP_LOGE(TAG, "Failed to encrypt plaintext for client-key packet: %d", err);
+		return ESP_FAIL;
+	}
+
+	err = tcp_write(dev->derp.tcp, &client_key_pkt, 106, TCP_WRITE_FLAG_COPY);
+	if (err != ESP_OK) {
+		ESP_LOGE(TAG, "Failed to send HTTP upgrade request %d", err);
+		return ESP_FAIL;
+	}
+
+	dev->derp.conn_state = CONN_STATE_HTTP_KEY_EXHCANGE;
+
+	return ESP_OK;
+}
+
+err_t derp_data_message(struct wireguard_device *dev, struct derp_pkt *packet) {
+	err_t err = ESP_FAIL;
+
 
 	return ESP_OK;
 }

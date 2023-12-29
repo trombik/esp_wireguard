@@ -174,15 +174,17 @@ struct wireguard_peer {
 };
 
 // DERP state
-struct derp_state_t {
-    struct tcp_pcb* tcp;
-    enum {
+enum conn_state_t {
         CONN_STATE_TCP_DISCONNECTED = 0,
         CONN_STATE_TCP_CONNECTING,
         CONN_STATE_HTTP_GET_REQ,
         CONN_STATE_HTTP_KEY_EXHCANGE,
         CONN_STATE_DERP_READY,
-    } conn_state;
+};
+
+struct derp_state_t {
+    struct tcp_pcb* tcp;
+    enum conn_state_t conn_state;
 };
 
 struct wireguard_device {
