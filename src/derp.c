@@ -12,6 +12,7 @@
 #include <sys/socket.h>
 #include <esp_log.h>
 #include <esp_err.h>
+#include "esp_tls.h"
 #include "crypto.h"
 #include "sodium.h"
 
@@ -19,6 +20,36 @@
 #define DERP_CONNECTION_TIMEOUT_TICKS 20
 
 #define TAG "derp" // TODO: fix log levels, as now only errors are printed
+
+// Certificate:
+const char *cacert =
+"-----BEGIN CERTIFICATE-----\n"
+"MIIEijCCA3KgAwIBAgIQfU1CqStDHX5kU+fBmo1YdzANBgkqhkiG9w0BAQsFADBX\n"
+"MQswCQYDVQQGEwJCRTEZMBcGA1UEChMQR2xvYmFsU2lnbiBudi1zYTEQMA4GA1UE\n"
+"CxMHUm9vdCBDQTEbMBkGA1UEAxMSR2xvYmFsU2lnbiBSb290IENBMB4XDTIyMTAx\n"
+"MjAzNDk0M1oXDTI3MTAxMjAwMDAwMFowTDELMAkGA1UEBhMCQkUxGTAXBgNVBAoT\n"
+"EEdsb2JhbFNpZ24gbnYtc2ExIjAgBgNVBAMTGUFscGhhU1NMIENBIC0gU0hBMjU2\n"
+"IC0gRzQwggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQCtJCmVZhWIPzOH\n"
+"A3jP1QwkuDFT8/+DImyZlSt85UpZwq7G0Sqd+n8gLlHIZypQkad5VkT7OLU+MI78\n"
+"lC7LVwxpU19ExlaWL67ANyWG8XHx3AJFQoZhuDbvUeNzRQyQs6XS5wN6uDlF0Bf1\n"
+"AtCUQWrGGLGYwyC1xTrzgrFKpESsIXMqklUGTsh8i7DKZhRUVfgrPLJUkbbLUrLY\n"
+"42+KRCiwfSvBloC5PgDYnj3oMZ1aTe3Wfk3l1I4D3RKaJ4PU1qHXhHJOge2bjGIG\n"
+"l6MsaBN+BB2sr6EnxX0xnMIbew2oIfOFoLqs47vh/GH4JN0qql2WBHfDPVDm3b+G\n"
+"QxY6N/LXAgMBAAGjggFbMIIBVzAOBgNVHQ8BAf8EBAMCAYYwHQYDVR0lBBYwFAYI\n"
+"KwYBBQUHAwEGCCsGAQUFBwMCMBIGA1UdEwEB/wQIMAYBAf8CAQAwHQYDVR0OBBYE\n"
+"FE/LrKjC76vdg29rv86YPVxYJXYVMB8GA1UdIwQYMBaAFGB7ZhpFDZfKiVAvfQTN\n"
+"NKj//P1LMHoGCCsGAQUFBwEBBG4wbDAtBggrBgEFBQcwAYYhaHR0cDovL29jc3Au\n"
+"Z2xvYmFsc2lnbi5jb20vcm9vdHIxMDsGCCsGAQUFBzAChi9odHRwOi8vc2VjdXJl\n"
+"Lmdsb2JhbHNpZ24uY29tL2NhY2VydC9yb290LXIxLmNydDAzBgNVHR8ELDAqMCig\n"
+"JqAkhiJodHRwOi8vY3JsLmdsb2JhbHNpZ24uY29tL3Jvb3QuY3JsMCEGA1UdIAQa\n"
+"MBgwCAYGZ4EMAQIBMAwGCisGAQQBoDIKAQMwDQYJKoZIhvcNAQELBQADggEBABol\n"
+"9nNkiECpWQenQ7oVP1FhvRX/LWTdzXpdMmp/SELnEJhoOe+366E0dt8tWGg+ezAc\n"
+"DPeGYPmp83nAVLeDpji7Nqu8ldB8+G/B6U9GB8i2DDIAqSsFEvcMbWb5gZ2/DmRN\n"
+"cifGi9FKAuFu2wyft4s4DHwzL2CJ2zjMlUOM3RaE1cxuOs+Om6MCD9G7vnkAtSiC\n"
+"/OOfHO902f4yI2a48K+gKaAf3lISFXjd32pwQ21LpM3ueIGydaJ+1/z8nv+C7SUT\n"
+"5bHoz7cYU27LUvh1n2WSNnC6/QwFSoP6gNKa4POO/oO13xjhrLRHJ/04cKMbRALt\n"
+"JWQkPacJ8SJVhB2R7BI=\n"
+"-----END CERTIFICATE-----";
 
 void derp_tick(struct wireguard_device *dev) {
 	err_t err = ESP_FAIL;
@@ -28,18 +59,19 @@ void derp_tick(struct wireguard_device *dev) {
 		is_any_peer_active |= dev->peers[i].active;
 	}
 
-	if (is_any_peer_active && dev->derp.tcp == NULL) {
+	if (is_any_peer_active && dev->derp.tls == NULL) {
 		ESP_LOGE(TAG, "No DERP connection, but active peers exists -> initializing DERP connection");
 		err = derp_initiate_new_connection(dev);
 		ESP_LOGE(TAG, "New DERP connection initiation status, %d", err);
-	} else if (!is_any_peer_active && dev->derp.tcp) {
+	} else if (!is_any_peer_active && dev->derp.tls) {
 		ESP_LOGE(TAG, "No active peer exists - Shutting down DERP connection");
 		err = derp_shutdown_connection(dev);
 		ESP_LOGE(TAG, "Shutdown of DERP connection status, %d", err);
-	} else if (dev->derp.tcp && dev->derp.ticks_connecting > DERP_CONNECTION_TIMEOUT_TICKS) {
-		ESP_LOGE(TAG, "DERP connection timeout - Shutting down");
-		err = derp_shutdown_connection(dev);
-		ESP_LOGE(TAG, "Shutdown of DERP connection status, %d", err);
+	} else if (dev->derp.tls && dev->derp.ticks_connecting > DERP_CONNECTION_TIMEOUT_TICKS) {
+		//ESP_LOGE(TAG, "DERP connection timeout - Shutting down");
+		//err = derp_shutdown_connection(dev);
+		//dev->derp.ticks_connecting = 0;
+		//ESP_LOGE(TAG, "Shutdown of DERP connection status, %d", err);
 	}
 
 	if ((dev->derp.conn_state & CONN_STATE_TCP_DISCONNECTED) | (dev->derp.conn_state & CONN_STATE_DERP_READY)) {
@@ -49,225 +81,88 @@ void derp_tick(struct wireguard_device *dev) {
 		}
 }
 
-err_t tcp_connected_callback(void *arg, struct tcp_pcb *tcp, err_t err) {
+static void derp_transmit_task(void *arg) {
 	struct wireguard_device *dev = (struct wireguard_device *)arg;
-	LWIP_ASSERT("tcp_connected_callback: invalid state", dev->derp.tcp == tcp);
-
-	ESP_LOGE(TAG, "Connected callback with status: %d", err);
-	if (err != ESP_OK) {
-		ESP_LOGE(TAG, "Failed to connect, resetting: %d", err);
-		derp_shutdown_connection(dev);
-		return ESP_OK;
-	}
-
-	err = derp_send_http_upgrade_request(dev);
-	if (err != ESP_OK) {
-		derp_shutdown_connection(dev);
-		return ESP_OK;
-	}
-
-	return ESP_OK;
-}
-
-err_t tcp_sent_callback(void *arg, struct tcp_pcb *tcp, u16_t len) {
-	struct wireguard_device *dev = (struct wireguard_device *)arg;
-	LWIP_ASSERT("tcp_sent_callback: invalid state", dev->derp.tcp == tcp);
-
-	ESP_LOGE(TAG, "TCP has sent %d amount of bytes", len);
-
-	return ESP_OK;
-}
-
-err_t tcp_recv_callback(void *arg, struct tcp_pcb *tcp, struct pbuf *buf, err_t err) {
-	struct wireguard_device *dev = (struct wireguard_device *)arg;
-	LWIP_ASSERT("tcp_sent_callback: invalid state", dev->derp.tcp == tcp);
-
-	if (err != ESP_OK) {
-		ESP_LOGE(TAG, "TCP has indicated failure at receive callback %d", err);
-		derp_shutdown_connection(dev);
-		return ESP_FAIL;
-	}
-
-	if (buf == NULL) {
-		ESP_LOGE(TAG, "Remote end has closed the connection");
-		derp_shutdown_connection(dev);
-		return ESP_OK;
-	}
-
-	if (buf->next != NULL) {
-		ESP_LOGE(TAG, "Fragmented payload, such payload is not yet supported");
-		derp_shutdown_connection(dev);
-		return ESP_OK;
-	}
-
-	// This packet is only valid in CONN_STATE_HTTP_KEY_EXHCANGE or CONN_STATE_DERP_READY
-	struct derp_pkt *pkt = (struct derp_pkt*)buf->payload;
-
-	// Verify the length of the packet
-	// The conditional is rather complicated, but this is what it does:
-	// * always ensure, that total length of the packet is larger or equal to 5 (packet header length)
-	// * if we are in CONN_STATE_HTTP_KEY_EXHCANGE or CONN_STATE_DERP_READY -> additionally ensure, that packet is at least pkt->length_be + 5 size
-	if ((buf->tot_len < 5) ||
-			((dev->derp.conn_state == CONN_STATE_HTTP_KEY_EXHCANGE || dev->derp.conn_state == CONN_STATE_DERP_READY) &&
-			(buf->tot_len < BE32_TO_LE32(pkt->length_be) + 5))) {
-		ESP_LOGE(TAG, "Received too short packet, header will not fit. Dropping. %d %d", buf->tot_len, BE32_TO_LE32(pkt->length_be) + 5);
-		tcp_recved(dev->derp.tcp, buf->tot_len);
-		pbuf_free(buf);
-		return ESP_OK;
-	}
-
-	// Process packet according to our current state
-	switch (dev->derp.conn_state) {
-		case CONN_STATE_TCP_DISCONNECTED:
-		case CONN_STATE_TCP_CONNECTING:
-			ESP_LOGE(TAG, "Received packet during unexpected state: %d", dev->derp.conn_state);
-			break;
-
-		case CONN_STATE_HTTP_GET_REQ:
-			err = derp_key_exchange(dev, buf);
-			if (err != ESP_OK) {
-				ESP_LOGE(TAG, "Error while processing key exchange packets, resetting DERP conn");
-				derp_shutdown_connection(dev);
-				return ESP_OK;
-			}
-			break;
-
-		case CONN_STATE_HTTP_KEY_EXHCANGE:
-			if (pkt->type == 3) {
-				ESP_LOGE(TAG, "Received packet of type %d in KeyExchange state, DERP connection established succesfully", pkt->type);
-				// This message is not super useful for us, so we will just ignore it :P
-				dev->derp.conn_state = CONN_STATE_DERP_READY;
-			}
-			break;
-
-		case CONN_STATE_DERP_READY:
-			ESP_LOGE(TAG, "Received packet of type %d in READY state", pkt->type);
-			derp_data_message(dev, buf, pkt);
-			//TODO: should we add some sort of error handling here?
-			break;
-	}
-
-	// Acknowledge all of the received bytes
-	tcp_recved(dev->derp.tcp, buf->tot_len);
-
-	// Free the pbuf, as everything went fine
-	pbuf_free(buf);
-
-	return ESP_OK;
-}
-
-err_t derp_initiate_new_connection(struct wireguard_device *dev) {
-	err_t err = ESP_FAIL;
-
-	LWIP_ASSERT("derp_tick: invalid state", dev->derp.conn_state == CONN_STATE_TCP_DISCONNECTED);
-	LWIP_ASSERT("derp_initiate_new_connection: invalid state", dev->derp.tcp == NULL);
+	uint8_t *read_buf = NULL;
+	int err = ESP_FAIL;
 
 	ESP_LOGE(TAG, "Allocating new socket");
-	dev->derp.tcp = tcp_new();
-	if (dev->derp.tcp == NULL) {
+	dev->derp.tls = esp_tls_init();
+
+	if (dev->derp.tls == NULL) {
 		ESP_LOGE(TAG, "Failed to allocate socket");
-		return ESP_FAIL;
+		goto ret;
 	}
 
-	ESP_LOGE(TAG, "Configuring sent ack callback");
-	tcp_sent(dev->derp.tcp, tcp_sent_callback);
+	// Prepare TLS configuration
+	esp_tls_cfg_t tls_cfg = {0};
+	tls_cfg.cacert_buf = cacert;
+	tls_cfg.cacert_bytes = strlen(cacert) + 1;
+	tls_cfg.skip_common_name = true;
 
-	ESP_LOGE(TAG, "Configuring recv callback");
-	tcp_recv(dev->derp.tcp, tcp_recv_callback);
-
-	ESP_LOGE(TAG, "Binding device to socket");
-	tcp_arg(dev->derp.tcp, dev);
-
-	u16_t sndbuf = tcp_sndbuf(dev->derp.tcp);
-	ESP_LOGE(TAG, "TCP SNDBUF Size: %d", sndbuf);
-
-	ESP_LOGE(TAG, "Convert IP address");
-	struct ip_addr addr = {0};
-	err = ipaddr_aton("157.230.123.169", &addr);
-	if (err != 1) {
-		ESP_LOGE(TAG, "Failed to convert IP address %d", err);
-		return ESP_FAIL;
+	// Try to establish TLS connection
+	const char *derp_ip = "149.88.19.146"; // TODO: make configurable
+	err = esp_tls_conn_new_sync(derp_ip, strlen(derp_ip), 8765, &tls_cfg, dev->derp.tls);
+	if (err == -1) {
+		ESP_LOGE(TAG, "Failed to attempt TLS connection address %d", err);
+		goto ret;
 	}
-
-	ESP_LOGE(TAG, "Attempting to connect to DERP");
-	err = tcp_connect(dev->derp.tcp, &addr, 8765, tcp_connected_callback);
-	if (err != ESP_OK) {
-		ESP_LOGE(TAG, "tcp_connect() failed %d", err);
-		return ESP_FAIL;
-	}
+	ESP_LOGE(TAG, "Connection Established!");
 
 	dev->derp.conn_state = CONN_STATE_TCP_CONNECTING;
 
-	return ESP_OK;
-}
-
-err_t derp_shutdown_connection(struct wireguard_device *dev) {
-	if (dev->derp.tcp != NULL) {
-		tcp_abort(dev->derp.tcp);
-		dev->derp.tcp = NULL;
-	}
-
-	dev->derp.conn_state = CONN_STATE_TCP_DISCONNECTED;
-
-	return ESP_OK;
-}
-
-err_t derp_send_http_upgrade_request(struct wireguard_device *dev) {
-	err_t err = ESP_FAIL;
-
+	// Prepare HTTP upgrade request
 	const char * http_req =
 		"GET /derp HTTP/1.1\r\n"
-		"Host: 157.230.123.169\r\n"
+		"Host: 149.88.19.146\r\n"
 		"Connection: Upgrade\r\n"
 		"Upgrade: WebSocket\r\n"
 		"User-Agent: esp32/v1.0.0 esp\r\n\r\n";
-
-	ESP_LOGE(TAG, "Sending HTTP upgrade request");
-	err = tcp_write(dev->derp.tcp, http_req, strlen(http_req), 0);
-	if (err != ESP_OK) {
+	err = esp_tls_conn_write(dev->derp.tls, http_req, strlen(http_req));
+	if (err < 0) {
 		ESP_LOGE(TAG, "Failed to send HTTP upgrade request %d", err);
-		return ESP_FAIL;
+		goto ret;
 	}
 
-	dev->derp.conn_state = CONN_STATE_HTTP_GET_REQ;
+	ESP_LOGE(TAG, "Request transmitted!");
 
-	return ESP_OK;
-}
-
-err_t derp_key_exchange(struct wireguard_device *dev, struct pbuf *buf) {
-	err_t err = ESP_FAIL;
-
-	// pbuf contains HTTP response and first WebSocket packet
-	// Ensure server is ok with upgrading protocol
-	char *expected_http_status = "101 Switching Protocols";
-	if (pbuf_memfind(buf, expected_http_status, strlen(expected_http_status), 0) == 0xFFFF) {
-		ESP_LOGE(TAG, "Server has not responded with success response: %s", buf->payload);
-		return ESP_FAIL;
+	// Read HTTP response
+	const int read_buf_size = 2048;
+	read_buf = mem_malloc(read_buf_size);
+	if (!read_buf) {
+		ESP_LOGE(TAG, "Failed allocate HTTP response buffer");
+		goto ret;
+	}
+	int read_len = esp_tls_conn_read(dev->derp.tls, read_buf, read_buf_size);
+	if (read_len <= 0) {
+		ESP_LOGE(TAG, "Failed to receive HTTP upgrade response %x %s", err, read_buf);
+		goto ret;
 	}
 
-	// Find the end of HTTP response
-	char *http_response_end = "\r\n\r\n";
-	u16_t idx = pbuf_memfind(buf, http_response_end, strlen(http_response_end), 0);
-	if (idx == 0xFFFF) {
-		ESP_LOGE(TAG, "Failed to find the end of HTTP response");
-		return ESP_FAIL;
-	}
-	idx += strlen(http_response_end);
-
-	// Verify the length of the response
-	const int required_derp_pkt_length = 45;
-	const int required_packet_length = idx + required_derp_pkt_length;
-	if (buf->tot_len < required_packet_length) {
-		ESP_LOGE(TAG, "Received packet is too short: %d < %d", buf->tot_len, required_packet_length);
-		return ESP_FAIL;
+	// Verify that server agrees to switch protocols
+	if (strstr(read_buf, "101 Switching Protocols") == NULL) {
+		ESP_LOGE(TAG, "Server has not responded with success response: %s", read_buf);
+		goto ret;
 	}
 
-	struct derp_pkt *server_key_pkt = (struct derp_pkt*)(&((uint8_t*)buf->payload)[idx]);
-	ESP_LOGE(TAG, "Received server key server_key_pkt:");
-	ESP_LOGE(TAG, "    type      : %d", server_key_pkt->type);
-	ESP_LOGE(TAG, "    length    : %d", BE32_TO_LE32(server_key_pkt->length_be));
-	ESP_LOGE(TAG, "    magic     : %s", server_key_pkt->server_key.magic);
-	ESP_LOGE(TAG, "    public_key: %s", server_key_pkt->server_key.server_public_key);
+	ESP_LOGE(TAG, "Server has switched protocols");
+
+	// Verify length of the response
+	uint8_t *http_resp_end = strstr(read_buf, "\r\n\r\n");
+	if (http_resp_end == NULL) {
+		ESP_LOGE(TAG, "HTTP response end not found");
+		goto ret;
+	}
+	http_resp_end += 4;
+
+	size_t http_resp_len = http_resp_end - (uint8_t *)read_buf;
+	if (read_len - http_resp_len < 45) {
+		ESP_LOGE(TAG, "Server Key packet too short %d", http_resp_len);
+		goto ret;
+	}
+
+	struct derp_pkt *server_key_pkt = http_resp_end;
+	ESP_LOGE(TAG, "ServerKey received");
 
 	//TODO: Validate that the server key is in
 	//      fact matching the one provided via config
@@ -290,22 +185,62 @@ err_t derp_key_exchange(struct wireguard_device *dev, struct pbuf *buf) {
 			dev->private_key);
 	if (err != 0) {
 		ESP_LOGE(TAG, "Failed to encrypt plaintext for client-key packet: %d", err);
-		return ESP_FAIL;
+		goto ret;
 	}
 
-	err = tcp_write(dev->derp.tcp, &client_key_pkt, 106, TCP_WRITE_FLAG_COPY);
-	if (err != ESP_OK) {
+	ESP_LOGE(TAG, "Attempting to transmit ClientKey message");
+	err = esp_tls_conn_write(dev->derp.tls, &client_key_pkt, 106);
+	if (err < 0) {
 		ESP_LOGE(TAG, "Failed to send HTTP upgrade request %d", err);
-		return ESP_FAIL;
+		goto ret;
 	}
 
-	dev->derp.conn_state = CONN_STATE_HTTP_KEY_EXHCANGE;
+	ESP_LOGE(TAG, "Reading ServerInfo message");
+	read_len = esp_tls_conn_read(dev->derp.tls, read_buf, read_buf_size);
+	if (read_len < 5) {
+		ESP_LOGE(TAG, "Failed to receive ServerInfo message %d", err);
+		goto ret;
+	}
+	struct derp_pkt *serverInfo = read_buf;
+	if (serverInfo->type != 3) {
+		ESP_LOGE(TAG, "Unexpected packet during DERP handshake %s", serverInfo->type);
+		goto ret;
+	}
+
+	ESP_LOGE(TAG, "DERP connection established succesfully");
+
+ret:
+	if (read_buf) {
+		mem_free(read_buf);
+	}
+
+	vTaskDelete(NULL);
+}
+
+err_t derp_initiate_new_connection(struct wireguard_device *dev) {
+	err_t err = ESP_FAIL;
+	LWIP_ASSERT("derp_tick: invalid state", dev->derp.conn_state == CONN_STATE_TCP_DISCONNECTED);
+	LWIP_ASSERT("derp_initiate_new_connection: invalid state", dev->derp.tls == NULL);
+
+	// Creating new task for http stuff
+	xTaskCreate(&https_request_task, "derp-task", 8192, dev, 5, NULL);
+
+	return ESP_OK;
+}
+
+err_t derp_shutdown_connection(struct wireguard_device *dev) {
+	if (dev->derp.tls != NULL) {
+		esp_tls_conn_destroy(dev->derp.tls);
+		dev->derp.tls = NULL;
+	}
+
+	dev->derp.conn_state = CONN_STATE_TCP_DISCONNECTED;
 
 	return ESP_OK;
 }
 
 err_t derp_data_message(struct wireguard_device *dev, struct pbuf *buf, struct derp_pkt *packet) {
-	err_t err = ESP_FAIL;
+	/*err_t err = ESP_FAIL;
 
 	//TODO: maybe there is a better way to include this function, as including wireguardif.h would introduce circular dependency
 	extern void wireguardif_network_rx(void *arg, struct udp_pcb *pcb, struct pbuf *p, const ip_addr_t *addr, u16_t port);
@@ -351,14 +286,14 @@ err_t derp_data_message(struct wireguard_device *dev, struct pbuf *buf, struct d
 	uint16_t port = 49152 + index;
 
 	ESP_LOGE(TAG, "Invoking packet receiving callback for wireguard for peer %s on port %d", base64_key_str, port);
-	wireguardif_network_rx((void *)dev, NULL, &data, &addr, port);
+	wireguardif_network_rx((void *)dev, NULL, &data, &addr, port); */
 
 	return ESP_OK;
 }
 
 
 err_t derp_send_packet(struct wireguard_device *dev, struct wireguard_peer *peer, struct pbuf *payload) {
-	err_t err = ESP_FAIL;
+	/*err_t err = ESP_FAIL;
 
 	ESP_LOGE(TAG, "Sending packet via DERP");
 
@@ -396,7 +331,8 @@ err_t derp_send_packet(struct wireguard_device *dev, struct wireguard_peer *peer
 
 cleanup:
 	mem_free(packet);
-	return err;
+	return err; */
+	return ESP_OK;
 }
 
 

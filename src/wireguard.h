@@ -49,6 +49,8 @@ extern "C" {
 #include "lwip/ip_addr.h"
 #include "lwip/arch.h"
 
+#include "esp_tls.h"
+
 // Platform-specific functions that need to be implemented per-platform
 #include "wireguard-platform.h"
 
@@ -183,7 +185,7 @@ enum conn_state_t {
 };
 
 struct derp_state_t {
-    struct tcp_pcb* tcp;
+    esp_tls_t *tls;
     enum conn_state_t conn_state;
     uint8_t ticks_connecting;
 };
