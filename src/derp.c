@@ -17,7 +17,7 @@
 
 #define WIREGUARDIF_TIMER_MSECS 400
 
-#define TAG "derp"
+#define TAG "derp" // TODO: fix log levels, as now only errors are printed
 
 void derp_tick(struct wireguard_device *dev) {
 	err_t err = ESP_FAIL;
@@ -100,6 +100,20 @@ err_t tcp_recv_callback(void *arg, struct tcp_pcb *tcp, struct pbuf *buf, err_t 
 	// This packet is only valid in CONN_STATE_HTTP_KEY_EXHCANGE or CONN_STATE_DERP_READY
 	struct derp_pkt *pkt = (struct derp_pkt*)buf->payload;
 
+	// Verify the length of the packet
+	// The conditional is rather complicated, but this is what it does:
+	// * always ensure, that total length of the packet is larger or equal to 5 (packet header length)
+	// * if we are in CONN_STATE_HTTP_KEY_EXHCANGE or CONN_STATE_DERP_READY -> additionally ensure, that packet is at least pkt->length_be + 5 size
+	if ((buf->tot_len < 5) ||
+			((dev->derp.conn_state == CONN_STATE_HTTP_KEY_EXHCANGE || dev->derp.conn_state == CONN_STATE_DERP_READY) &&
+			(buf->tot_len < BE32_TO_LE32(pkt->length_be) + 5))) {
+		ESP_LOGE(TAG, "Received too short packet, header will not fit. Dropping. %d %d", buf->tot_len, BE32_TO_LE32(pkt->length_be) + 5);
+		tcp_recved(dev->derp.tcp, buf->tot_len);
+		pbuf_free(buf);
+		return ESP_OK;
+	}
+
+	// Process packet according to our current state
 	switch (dev->derp.conn_state) {
 		case CONN_STATE_TCP_DISCONNECTED:
 		case CONN_STATE_TCP_CONNECTING:
@@ -125,7 +139,8 @@ err_t tcp_recv_callback(void *arg, struct tcp_pcb *tcp, struct pbuf *buf, err_t 
 
 		case CONN_STATE_DERP_READY:
 			ESP_LOGE(TAG, "Received packet of type %d in READY state", pkt->type);
-
+			derp_data_message(dev, buf, pkt);
+			//TODO: should we add some sort of error handling here?
 			break;
 	}
 
@@ -292,11 +307,97 @@ err_t derp_key_exchange(struct wireguard_device *dev, struct pbuf *buf) {
 	return ESP_OK;
 }
 
-err_t derp_data_message(struct wireguard_device *dev, struct derp_pkt *packet) {
+err_t derp_data_message(struct wireguard_device *dev, struct pbuf *buf, struct derp_pkt *packet) {
 	err_t err = ESP_FAIL;
 
+	//TODO: maybe there is a better way to include this function, as including wireguardif.h would introduce circular dependency
+	extern void wireguardif_network_rx(void *arg, struct udp_pcb *pcb, struct pbuf *p, const ip_addr_t *addr, u16_t port);
+
+	// Process only data packets. Ignore others for now.
+	if (packet->type != 0x05) {
+		ESP_LOGE(TAG, "Received non-data packet. Ignoring %d", packet->type);
+		return ESP_OK;
+	}
+
+	// Prepare base64 encoded destination public key for convenience
+	int len = 0;
+	char base64_key_str[45] = {0};
+	wireguard_base64_encode(packet->data.peer_public_key, WIREGUARD_PUBLIC_KEY_LEN, base64_key_str, &len);
+
+	// Data packet:
+	uint16_t offset;
+	struct pbuf *data = pbuf_skip(buf, offsetof(struct derp_pkt, data.data), &offset);
+	ESP_LOGE(TAG, "Skipping pbuf: %d %d %d", offset, data->tot_len, BE32_TO_LE32(packet->length_be));
+
+	// Always use localhost address
+	struct ip_addr addr = {0};
+	err = ipaddr_aton("127.0.0.1", &addr);
+
+	// Find which peer packet is being sent,
+	// we will assign port according to this
+	int index = -1;
+	for (int i = 0; i < WIREGUARD_MAX_PEERS; i++) {
+		if (!dev->peers[i].active)
+			continue;
+
+		// Compare public keys of known peers
+		if (memcmp(packet->data.peer_public_key, dev->peers[i].public_key, WIREGUARD_PUBLIC_KEY_LEN) == 0) {
+			index = i;
+			break;
+		}
+	}
+	if (index == -1) {
+		ESP_LOGE(TAG, "Received data mesage for unknown peer %s. Ignoring", base64_key_str);
+	}
+	uint16_t port = 49152 + index;
+
+	ESP_LOGE(TAG, "Invoking packet receiving callback for wireguard for peer %s on port %d", base64_key_str, port);
+	wireguardif_network_rx((void *)dev, NULL, data, &addr, port);
 
 	return ESP_OK;
+}
+
+
+err_t derp_send_packet(struct wireguard_device *dev, struct wireguard_peer *peer, struct pbuf *payload) {
+	err_t err = ESP_FAIL;
+
+	ESP_LOGE(TAG, "Sending packet via DERP");
+
+	if (dev->derp.conn_state != CONN_STATE_DERP_READY) {
+		ESP_LOGE(TAG, "Requested to transmit packet while DERP is not ready. Dropping");
+		return ESP_FAIL;
+	}
+
+	// Allocate buffer for packet
+	int packet_len = 5 + WIREGUARD_PUBLIC_KEY_LEN + 1 + payload->tot_len;
+	struct derp_pkt *packet = mem_malloc(packet_len);
+	if (!packet) {
+		ESP_LOGE(TAG, "Failed to allocate buffer for packet");
+		return ESP_FAIL;
+	}
+
+	packet->type = 0x04; // SendPacket type
+	packet->length_be = BE32_TO_LE32(WIREGUARD_PUBLIC_KEY_LEN + payload->tot_len);
+	memcpy(packet->data.peer_public_key, peer->public_key, WIREGUARD_PUBLIC_KEY_LEN);
+	packet->data.subtype = 0x00;
+	pbuf_copy_partial(payload, packet->data.data, payload->tot_len, 0);
+
+	err = tcp_write(dev->derp.tcp, packet, packet_len, 0);
+	if (err != ESP_OK) {
+		ESP_LOGE(TAG, "Failed to send packet data %d", err);
+		goto cleanup;
+	}
+
+	// Flush data
+	err = tcp_output(dev->derp.tcp);
+	if (err != ESP_OK) {
+		ESP_LOGE(TAG, "Failed to flush packet data %d", err);
+		goto cleanup;
+	}
+
+cleanup:
+	mem_free(packet);
+	return err;
 }
 
 

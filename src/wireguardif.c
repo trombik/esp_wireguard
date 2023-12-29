@@ -93,11 +93,15 @@ static err_t wireguardif_peer_output(struct netif *netif, struct pbuf *q, struct
 	struct wireguard_device *device = (struct wireguard_device *)netif->state;
 	// Send to last know port, not the connect port
 	//TODO: Support DSCP and ECN - lwip requires this set on PCB globally, not per packet
-	return udp_sendto_if(device->udp_pcb, q, &peer->ip, peer->port, device->underlying_netif);
+	// return udp_sendto_if(device->udp_pcb, q, &peer->ip, peer->port, device->underlying_netif);
+
+	// Send via DERP
+	return derp_send_packet(device, peer, q);
 }
 
 static err_t wireguardif_device_output(struct wireguard_device *device, struct pbuf *q, const ip_addr_t *ipaddr, u16_t port) {
-	return udp_sendto_if(device->udp_pcb, q, ipaddr, port, device->underlying_netif);
+	LWIP_ASSERT("wireguardif_device_output: Not Implemented", false);
+	//return udp_sendto_if(device->udp_pcb, q, ipaddr, port, device->underlying_netif);
 }
 
 static err_t wireguardif_output_to_peer(struct netif *netif, struct pbuf *q, const ip_addr_t *ipaddr, struct wireguard_peer *peer) {
@@ -459,6 +463,10 @@ static size_t get_source_addr_port(const ip_addr_t *addr, u16_t port, uint8_t *b
 }
 
 static void wireguardif_send_handshake_cookie(struct wireguard_device *device, const uint8_t *mac1, uint32_t index, const ip_addr_t *addr, u16_t port) {
+	// TODO: Cookie replies are not supported as of now:
+	return;
+
+
 	struct message_cookie_reply packet;
 	struct pbuf *pbuf = NULL;
 	err_t err = ERR_OK;
@@ -617,7 +625,7 @@ void wireguardif_network_rx(void *arg, struct udp_pcb *pcb, struct pbuf *p, cons
 			break;
 	}
 	// Release data!
-	pbuf_free(p);
+	//pbuf_free(p); -> DERP module will handle memory freeing for this packet
 }
 
 static err_t wireguard_start_handshake(struct netif *netif, struct wireguard_peer *peer) {
