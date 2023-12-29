@@ -16,6 +16,7 @@
 #include "sodium.h"
 
 #define WIREGUARDIF_TIMER_MSECS 400
+#define DERP_CONNECTION_TIMEOUT_TICKS 20
 
 #define TAG "derp" // TODO: fix log levels, as now only errors are printed
 
@@ -35,15 +36,17 @@ void derp_tick(struct wireguard_device *dev) {
 		ESP_LOGE(TAG, "No active peer exists - Shutting down DERP connection");
 		err = derp_shutdown_connection(dev);
 		ESP_LOGE(TAG, "Shutdown of DERP connection status, %d", err);
+	} else if (dev->derp.tcp && dev->derp.ticks_connecting > DERP_CONNECTION_TIMEOUT_TICKS) {
+		ESP_LOGE(TAG, "DERP connection timeout - Shutting down");
+		err = derp_shutdown_connection(dev);
+		ESP_LOGE(TAG, "Shutdown of DERP connection status, %d", err);
 	}
 
-	// TODO: if tcp pointer is live, but connection is
-	//       dead then free dev->derp.tcp
-
-	// TODO: count how many ticks are spent in each state
-	//       (except for DISCONNECTED and DERP_READY) and if
-	//       it is above some threshold - reset the connection
-	//       by calling derp_shutdown_connection()
+	if ((dev->derp.conn_state & CONN_STATE_TCP_DISCONNECTED) | (dev->derp.conn_state & CONN_STATE_DERP_READY)) {
+			dev->derp.ticks_connecting = 0;
+		} else {
+			++dev->derp.ticks_connecting;
+		}
 }
 
 err_t tcp_connected_callback(void *arg, struct tcp_pcb *tcp, err_t err) {
@@ -156,13 +159,7 @@ err_t tcp_recv_callback(void *arg, struct tcp_pcb *tcp, struct pbuf *buf, err_t 
 err_t derp_initiate_new_connection(struct wireguard_device *dev) {
 	err_t err = ESP_FAIL;
 
-	ESP_LOGE(TAG, "Precoutionary cleanup of DERP connections");
-	err = derp_shutdown_connection(dev);
-	if (err != ESP_OK) {
-		ESP_LOGE(TAG, "Cleanup FAILED");
-		return ESP_FAIL;
-	}
-
+	LWIP_ASSERT("derp_tick: invalid state", dev->derp.conn_state == CONN_STATE_TCP_DISCONNECTED);
 	LWIP_ASSERT("derp_initiate_new_connection: invalid state", dev->derp.tcp == NULL);
 
 	ESP_LOGE(TAG, "Allocating new socket");

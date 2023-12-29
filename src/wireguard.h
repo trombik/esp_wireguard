@@ -185,6 +185,7 @@ enum conn_state_t {
 struct derp_state_t {
     struct tcp_pcb* tcp;
     enum conn_state_t conn_state;
+    uint8_t ticks_connecting;
 };
 
 struct wireguard_device {
