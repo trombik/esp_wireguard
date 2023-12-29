@@ -322,9 +322,11 @@ err_t derp_data_message(struct wireguard_device *dev, struct pbuf *buf, struct d
 	wireguard_base64_encode(packet->data.peer_public_key, WIREGUARD_PUBLIC_KEY_LEN, base64_key_str, &len);
 
 	// Data packet:
-	uint16_t offset;
-	struct pbuf *data = pbuf_skip(buf, offsetof(struct derp_pkt, data.data), &offset);
-	ESP_LOGE(TAG, "Skipping pbuf: %d %d %d", offset, data->tot_len, BE32_TO_LE32(packet->length_be));
+	uint16_t offset = 0;
+	struct pbuf data = *buf;
+	data.payload = (uint8_t *)data.payload + offsetof(struct derp_pkt, data.data);
+	data.tot_len -= offsetof(struct derp_pkt, data.data);
+	data.len -= offsetof(struct derp_pkt, data.data);
 
 	// Always use localhost address
 	struct ip_addr addr = {0};
@@ -349,7 +351,7 @@ err_t derp_data_message(struct wireguard_device *dev, struct pbuf *buf, struct d
 	uint16_t port = 49152 + index;
 
 	ESP_LOGE(TAG, "Invoking packet receiving callback for wireguard for peer %s on port %d", base64_key_str, port);
-	wireguardif_network_rx((void *)dev, NULL, data, &addr, port);
+	wireguardif_network_rx((void *)dev, NULL, &data, &addr, port);
 
 	return ESP_OK;
 }
@@ -374,7 +376,7 @@ err_t derp_send_packet(struct wireguard_device *dev, struct wireguard_peer *peer
 	}
 
 	packet->type = 0x04; // SendPacket type
-	packet->length_be = BE32_TO_LE32(WIREGUARD_PUBLIC_KEY_LEN + payload->tot_len);
+	packet->length_be = BE32_TO_LE32(WIREGUARD_PUBLIC_KEY_LEN + 1 + payload->tot_len);
 	memcpy(packet->data.peer_public_key, peer->public_key, WIREGUARD_PUBLIC_KEY_LEN);
 	packet->data.subtype = 0x00;
 	pbuf_copy_partial(payload, packet->data.data, payload->tot_len, 0);
