@@ -81,6 +81,108 @@ void derp_tick(struct wireguard_device *dev) {
 		}
 }
 
+
+static void read_from_interface_worker(void *arg) {
+	int err = ESP_FAIL;
+	struct wireguard_device *dev = (struct wireguard_device *)arg;
+	uint32_t packet_ptr;
+
+	ESP_LOGE(TAG, "Read from interface worker starting");
+
+	for (;;) {
+		xTaskNotifyWaitIndexed(0, ULONG_MAX, ULONG_MAX, &packet_ptr, portMAX_DELAY);
+		struct derp_pkt *data_pkt = (struct derp_pkt *)packet_ptr;
+
+		ESP_LOGE(TAG, "Data packet has attempted to send");
+		err = esp_tls_conn_write(dev->derp.tls, data_pkt, BE32_TO_LE32(data_pkt->length_be) + 5);
+		if (err < 0) {
+			ESP_LOGE(TAG, "Failed to send data packet %d", err);
+			goto end;
+		}
+
+		ESP_LOGE(TAG, "Data packet has been sent");
+		mem_free(data_pkt);
+	}
+
+end:
+	vTaskDelete(NULL);
+}
+
+static void read_from_network_worker(void *arg) {
+	int err = ESP_FAIL;
+	struct wireguard_device *dev = (struct wireguard_device *)arg;
+	size_t max_data_pkt_size = 2048;
+	struct derp_pkt *data_pkt = mem_malloc(max_data_pkt_size);
+	if (data_pkt == NULL) {
+		ESP_LOGE(TAG, "Failed to allocate memory for rx packet buf");
+		goto end;
+	}
+
+	ESP_LOGE(TAG, "Read from network worker starting");
+
+	for (;;) {
+		int read_len = esp_tls_conn_read(dev->derp.tls, data_pkt, max_data_pkt_size);
+		if (read_len <= 0) {
+			ESP_LOGE(TAG, "Failed to receive data packet upgrade response %d", read_len);
+			goto end;
+		}
+
+		if (read_len < 5 || read_len < 5 + BE32_TO_LE32(data_pkt->length_be)) {
+			ESP_LOGE(TAG, "Received packet is too short %d", read_len);
+			continue;
+		}
+
+		if (data_pkt->type != 0x05) {
+			ESP_LOGE(TAG, "Received strange packet type %d", data_pkt->type);
+			continue;
+		}
+
+		if (data_pkt->data.subtype != 0x00) {
+			ESP_LOGE(TAG, "Received strange packet subtype %d", data_pkt->data.subtype);
+			continue;
+		}
+
+		// Data packet:
+		uint16_t offset = 0;
+		struct pbuf data;
+		data.payload = data_pkt->data.data;
+		data.tot_len = read_len - offsetof(struct derp_pkt, data.data);
+		data.len = read_len - offsetof(struct derp_pkt, data.data);
+
+		// Always use localhost address
+		struct ip_addr addr = {0};
+		err = ipaddr_aton("127.0.0.1", &addr);
+
+		// Find which peer packet is being sent,
+		// we will assign port according to this
+		int index = -1;
+		for (int i = 0; i < WIREGUARD_MAX_PEERS; i++) {
+			if (!dev->peers[i].active)
+				continue;
+
+			// Compare public keys of known peers
+			if (memcmp(data_pkt->data.peer_public_key, dev->peers[i].public_key, WIREGUARD_PUBLIC_KEY_LEN) == 0) {
+				index = i;
+				break;
+			}
+		}
+		if (index == -1) {
+			ESP_LOGE(TAG, "Received data mesage for unknown peer. Ignoring");
+		}
+		uint16_t port = 49152 + index;
+
+		ESP_LOGE(TAG, "Invoking packet receiving callback for wireguard for peer on port %d", port);
+		wireguardif_network_rx((void *)dev, NULL, &data, &addr, port);
+	}
+
+end:
+	if (data_pkt) {
+		mem_free(data_pkt);
+	}
+
+	vTaskDelete(NULL);
+}
+
 static void derp_transmit_task(void *arg) {
 	struct wireguard_device *dev = (struct wireguard_device *)arg;
 	uint8_t *read_buf = NULL;
@@ -207,7 +309,14 @@ static void derp_transmit_task(void *arg) {
 		goto ret;
 	}
 
+	mem_free(read_buf);
+	read_buf = NULL;
+
 	ESP_LOGE(TAG, "DERP connection established succesfully");
+
+	dev->derp.conn_state = CONN_STATE_DERP_READY;
+
+	read_from_network_worker(dev);
 
 ret:
 	if (read_buf) {
@@ -223,7 +332,8 @@ err_t derp_initiate_new_connection(struct wireguard_device *dev) {
 	LWIP_ASSERT("derp_initiate_new_connection: invalid state", dev->derp.tls == NULL);
 
 	// Creating new task for http stuff
-	xTaskCreate(&https_request_task, "derp-task", 8192, dev, 5, NULL);
+	xTaskCreate(&read_from_interface_worker, "read-from-interface", 8192, dev, 5, &dev->derp.read_interface_worker);
+	xTaskCreate(&derp_transmit_task, "derp-task", 8192, dev, 5, NULL);
 
 	return ESP_OK;
 }
@@ -239,63 +349,9 @@ err_t derp_shutdown_connection(struct wireguard_device *dev) {
 	return ESP_OK;
 }
 
-err_t derp_data_message(struct wireguard_device *dev, struct pbuf *buf, struct derp_pkt *packet) {
-	/*err_t err = ESP_FAIL;
-
-	//TODO: maybe there is a better way to include this function, as including wireguardif.h would introduce circular dependency
-	extern void wireguardif_network_rx(void *arg, struct udp_pcb *pcb, struct pbuf *p, const ip_addr_t *addr, u16_t port);
-
-	// Process only data packets. Ignore others for now.
-	if (packet->type != 0x05) {
-		ESP_LOGE(TAG, "Received non-data packet. Ignoring %d", packet->type);
-		return ESP_OK;
-	}
-
-	// Prepare base64 encoded destination public key for convenience
-	int len = 0;
-	char base64_key_str[45] = {0};
-	wireguard_base64_encode(packet->data.peer_public_key, WIREGUARD_PUBLIC_KEY_LEN, base64_key_str, &len);
-
-	// Data packet:
-	uint16_t offset = 0;
-	struct pbuf data = *buf;
-	data.payload = (uint8_t *)data.payload + offsetof(struct derp_pkt, data.data);
-	data.tot_len -= offsetof(struct derp_pkt, data.data);
-	data.len -= offsetof(struct derp_pkt, data.data);
-
-	// Always use localhost address
-	struct ip_addr addr = {0};
-	err = ipaddr_aton("127.0.0.1", &addr);
-
-	// Find which peer packet is being sent,
-	// we will assign port according to this
-	int index = -1;
-	for (int i = 0; i < WIREGUARD_MAX_PEERS; i++) {
-		if (!dev->peers[i].active)
-			continue;
-
-		// Compare public keys of known peers
-		if (memcmp(packet->data.peer_public_key, dev->peers[i].public_key, WIREGUARD_PUBLIC_KEY_LEN) == 0) {
-			index = i;
-			break;
-		}
-	}
-	if (index == -1) {
-		ESP_LOGE(TAG, "Received data mesage for unknown peer %s. Ignoring", base64_key_str);
-	}
-	uint16_t port = 49152 + index;
-
-	ESP_LOGE(TAG, "Invoking packet receiving callback for wireguard for peer %s on port %d", base64_key_str, port);
-	wireguardif_network_rx((void *)dev, NULL, &data, &addr, port); */
-
-	return ESP_OK;
-}
-
 
 err_t derp_send_packet(struct wireguard_device *dev, struct wireguard_peer *peer, struct pbuf *payload) {
-	/*err_t err = ESP_FAIL;
-
-	ESP_LOGE(TAG, "Sending packet via DERP");
+	err_t err = ESP_FAIL;
 
 	if (dev->derp.conn_state != CONN_STATE_DERP_READY) {
 		ESP_LOGE(TAG, "Requested to transmit packet while DERP is not ready. Dropping");
@@ -316,22 +372,12 @@ err_t derp_send_packet(struct wireguard_device *dev, struct wireguard_peer *peer
 	packet->data.subtype = 0x00;
 	pbuf_copy_partial(payload, packet->data.data, payload->tot_len, 0);
 
-	err = tcp_write(dev->derp.tcp, packet, packet_len, 0);
-	if (err != ESP_OK) {
-		ESP_LOGE(TAG, "Failed to send packet data %d", err);
-		goto cleanup;
-	}
-
-	// Flush data
-	err = tcp_output(dev->derp.tcp);
-	if (err != ESP_OK) {
-		ESP_LOGE(TAG, "Failed to flush packet data %d", err);
-		goto cleanup;
+	if (xTaskNotify(dev->derp.read_interface_worker, (uint32_t)packet, eSetValueWithoutOverwrite) != pdPASS) {
+		mem_free(packet);
+		ESP_LOGE(TAG, "Worker busy -> dropping packet");
 	}
 
 cleanup:
-	mem_free(packet);
-	return err; */
 	return ESP_OK;
 }
 

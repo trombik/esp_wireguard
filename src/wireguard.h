@@ -186,6 +186,7 @@ enum conn_state_t {
 
 struct derp_state_t {
     esp_tls_t *tls;
+    TaskHandle_t read_interface_worker;
     enum conn_state_t conn_state;
     uint8_t ticks_connecting;
 };
