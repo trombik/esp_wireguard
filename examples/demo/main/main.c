@@ -411,7 +411,7 @@ void app_main(void)
     while (1) {
         vTaskDelay(1000 * 10 / portTICK_PERIOD_MS);
         ESP_LOGI(TAG, "Disconnecting.");
-        esp_wireguard_disconnect(&ctx, wireguard_peer_index);
+        esp_wireguard_disconnect(&ctx);
         ESP_LOGI(TAG, "Disconnected.");
 
         vTaskDelay(1000 * 10 / portTICK_PERIOD_MS);

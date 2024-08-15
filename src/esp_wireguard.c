@@ -298,15 +298,9 @@ fail:
     return err;
 }
 
-esp_err_t esp_wireguard_disconnect(wireguard_ctx_t *ctx, uint8_t *wireguard_peer_index)
-{
+esp_err_t esp_wireguard_remove_peer(wireguard_ctx_t* ctx, uint8_t *wireguard_peer_index) {
     esp_err_t err;
     err_t lwip_err;
-
-    if (!ctx) {
-        err = ESP_ERR_INVALID_ARG;
-        goto fail;
-    }
 
     lwip_err = wireguardif_disconnect(ctx->netif, *wireguard_peer_index);
     if (lwip_err != ERR_OK) {
@@ -319,6 +313,24 @@ esp_err_t esp_wireguard_disconnect(wireguard_ctx_t *ctx, uint8_t *wireguard_peer
     }
 
     *wireguard_peer_index = WIREGUARDIF_INVALID_INDEX;
+
+    err = ESP_OK;
+    return err;
+}
+
+esp_err_t esp_wireguard_disconnect(wireguard_ctx_t *ctx)
+{
+    esp_err_t err;
+
+    if (!ctx) {
+        err = ESP_ERR_INVALID_ARG;
+        goto fail;
+    }
+
+    for (uint8_t wg_idx = 0; wg_idx < WIREGUARD_MAX_PEERS; wg_idx++) {
+        err = esp_wireguard_remove_peer(ctx, &wg_idx);
+    }
+
     wireguardif_shutdown(ctx->netif);
     netif_remove(ctx->netif);
     netif_set_default(ctx->netif_default);

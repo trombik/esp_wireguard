@@ -146,7 +146,7 @@ esp_err_t esp_wireguardif_peer_is_up(wireguard_ctx_t *ctx, uint8_t wireguard_pee
  * @return
  *      - ESP_OK on success.
  */
-esp_err_t esp_wireguard_disconnect(wireguard_ctx_t *ctx, uint8_t *wireguard_peer_index);
+esp_err_t esp_wireguard_disconnect(wireguard_ctx_t *ctx);
 
 /**
  * @brief Add and connect a peer to wireguard
@@ -157,6 +157,15 @@ esp_err_t esp_wireguard_disconnect(wireguard_ctx_t *ctx, uint8_t *wireguard_peer
  *      - ESP_OK on success.
  */
 esp_err_t esp_wireguard_add_peer(wireguard_peer_config_t* peer_config, uint8_t *wireguard_peer_index);
+
+/**
+ * @brief Remove a peer remove wireguard
+ *
+ * @param ctx Context of WireGuard.
+ * @return
+ *      - ESP_OK on success.
+ */
+esp_err_t esp_wireguard_remove_peer(wireguard_ctx_t* ctx, uint8_t *wireguard_peer_index);
 
 #ifdef __cplusplus
 }
