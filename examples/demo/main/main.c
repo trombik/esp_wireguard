@@ -49,25 +49,31 @@ static EventGroupHandle_t s_wifi_event_group;
 static const char *TAG = "demo";
 static int s_retry_num = 0;
 static wireguard_config_t wg_config = ESP_WIREGUARD_CONFIG_DEFAULT();
+static wireguard_peer_config_t peer_config = ESP_WIREGUARD_PEER_CONFIG_DEFAULT();
+static uint8_t wireguard_peer_index[WG_MAX_PEERS] = {WIREGUARD_INVALID_PEER};
 
-static esp_err_t wireguard_setup(wireguard_ctx_t* ctx)
+
+static esp_err_t wireguard_setup(wireguard_ctx_t *ctx)
 {
     esp_err_t err = ESP_FAIL;
 
     ESP_LOGI(TAG, "Initializing WireGuard.");
-    wg_config.private_key = CONFIG_WG_PRIVATE_KEY;
-    wg_config.listen_port = CONFIG_WG_LOCAL_PORT;
-    wg_config.public_key = CONFIG_WG_PEER_PUBLIC_KEY;
-    if (strcmp(CONFIG_WG_PRESHARED_KEY, "") != 0) {
-        wg_config.preshared_key = CONFIG_WG_PRESHARED_KEY;
-    } else {
-        wg_config.preshared_key = NULL;
-    }
-    wg_config.allowed_ip = CONFIG_WG_LOCAL_IP_ADDRESS;
-    wg_config.allowed_ip_mask = CONFIG_WG_LOCAL_IP_NETMASK;
-    wg_config.endpoint = CONFIG_WG_PEER_ADDRESS;
-    wg_config.port = CONFIG_WG_PEER_PORT;
-    wg_config.persistent_keepalive = CONFIG_WG_PERSISTENT_KEEP_ALIVE;
+    // To remove!! These values are pure fictional!
+    wg_config.private_key = "BRHGs1PEN0v4Rkg+k4R9zTz1y2M6ChMfFevJWx3b1gM=";
+    wg_config.listen_port = 51820;
+    wg_config.base_ip = "192.168.1.10";
+    wg_config.net_mask = "255.255.255.0";
+    peer_config.public_key = "7Nms8T/Vwg5QYbX2F7gHb6i7k29T6l9OPqwXsP3oXTY=";
+    // if (strcmp(CONFIG_WG_PRESHARED_KEY, "") != 0) {
+    //     wg_config.preshared_key = CONFIG_WG_PRESHARED_KEY;
+    // } else {
+    peer_config.preshared_key = NULL;
+    // }
+    peer_config.allowed_ip = "192.168.1.11";
+    peer_config.allowed_ip_mask = "255.255.255.0";
+    peer_config.endpoint = "10.0.0.1";
+    peer_config.port = 51820;
+    peer_config.persistent_keepalive = 25;
 
     err = esp_wireguard_init(&wg_config, ctx);
     if (err != ESP_OK) {
@@ -82,6 +88,12 @@ static esp_err_t wireguard_setup(wireguard_ctx_t* ctx)
         goto fail;
     }
 
+    err = esp_wireguard_add_peer(&peer_config, wireguard_peer_index);
+    if (err != ESP_OK)
+    {
+        ESP_LOGE(TAG, "esp_wireguard_add_peer: %s", esp_err_to_name(err));
+        goto fail;
+    }
     err = ESP_OK;
 fail:
     return err;
@@ -386,7 +398,7 @@ void app_main(void)
 
     while (1) {
         vTaskDelay(1000 / portTICK_PERIOD_MS);
-        err = esp_wireguardif_peer_is_up(&ctx);
+        err = esp_wireguardif_peer_is_up(&ctx, wireguard_peer_index[0]);
         if (err == ESP_OK) {
             ESP_LOGI(TAG, "Peer is up");
             break;
@@ -399,7 +411,7 @@ void app_main(void)
     while (1) {
         vTaskDelay(1000 * 10 / portTICK_PERIOD_MS);
         ESP_LOGI(TAG, "Disconnecting.");
-        esp_wireguard_disconnect(&ctx);
+        esp_wireguard_disconnect(&ctx, wireguard_peer_index);
         ESP_LOGI(TAG, "Disconnected.");
 
         vTaskDelay(1000 * 10 / portTICK_PERIOD_MS);
@@ -409,7 +421,7 @@ void app_main(void)
             ESP_LOGE(TAG, "esp_wireguard_connect: %s", esp_err_to_name(err));
             goto fail;
         }
-        while (esp_wireguardif_peer_is_up(&ctx) != ESP_OK) {
+        while (esp_wireguardif_peer_is_up(&ctx, wireguard_peer_index[0]) != ESP_OK) {
             vTaskDelay(1000 / portTICK_PERIOD_MS);
         }
         ESP_LOGI(TAG, "Peer is up");
