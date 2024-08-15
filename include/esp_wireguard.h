@@ -152,6 +152,7 @@ esp_err_t esp_wireguard_disconnect(wireguard_ctx_t *ctx, uint8_t *wireguard_peer
  * @brief Add and connect a peer to wireguard
  *
  * @param peer_config Configuration of a peer.
+ * @param wireguard_peer_index Index of the peer.
  * @return
  *      - ESP_OK on success.
  */
