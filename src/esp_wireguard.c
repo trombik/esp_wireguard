@@ -255,6 +255,11 @@ esp_err_t esp_wireguard_add_peer(wireguard_peer_config_t *peer_config, uint8_t *
     esp_err_t err = ESP_FAIL;
     err_t lwip_err = -1;
 
+    if (!peer_config || !wireguard_peer_index) {
+        err = ESP_ERR_INVALID_ARG;
+        goto fail;
+    }
+
     ESP_LOGI(TAG, "Connecting to %s:%i", peer_config->endpoint, peer_config->port);
         /* Initialize the first WireGuard peer structure */
         err = esp_wireguard_peer_init(peer_config, &peer);
@@ -302,6 +307,11 @@ esp_err_t esp_wireguard_remove_peer(wireguard_ctx_t* ctx, uint8_t *wireguard_pee
     esp_err_t err;
     err_t lwip_err;
 
+    if (!ctx || !wireguard_peer_index) {
+        err = ESP_ERR_INVALID_ARG;
+        goto fail;
+    }
+
     lwip_err = wireguardif_disconnect(ctx->netif, *wireguard_peer_index);
     if (lwip_err != ERR_OK) {
         ESP_LOGW(TAG, "wireguardif_disconnect: peer_index: %" PRIu8 " err: %i", *wireguard_peer_index, lwip_err);
@@ -315,6 +325,7 @@ esp_err_t esp_wireguard_remove_peer(wireguard_ctx_t* ctx, uint8_t *wireguard_pee
     *wireguard_peer_index = WIREGUARDIF_INVALID_INDEX;
 
     err = ESP_OK;
+fail:
     return err;
 }
 
