@@ -289,6 +289,28 @@ fail:
     return err;
 }
 
+esp_err_t esp_wireguard_update_peer(wireguard_peer_config_t *peer_config, uint8_t wireguard_peer_index) {
+    esp_err_t err = ESP_FAIL;
+    struct wireguardif_peer peer = {0};
+
+    if (!peer_config || !wireguard_peer_index) {
+        err = ESP_ERR_INVALID_ARG;
+        goto fail;
+    }
+
+    ESP_LOGI(TAG, "Connecting to %s:%i", peer_config->endpoint, peer_config->port);
+        err = esp_wireguard_peer_init(peer_config, &peer);
+        if (err != ESP_OK) {
+            ESP_LOGE(TAG, "esp_wireguard_peer_init: %s", esp_err_to_name(err));
+            goto fail;
+        }
+    wireguardif_update_peer(wg_netif, &peer, wireguard_peer_index);
+
+    err = ESP_OK;
+fail:
+    return err;
+}
+
 esp_err_t esp_wireguard_set_default(wireguard_ctx_t *ctx)
 {
     esp_err_t err;

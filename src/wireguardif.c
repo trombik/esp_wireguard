@@ -744,6 +744,17 @@ err_t wireguardif_update_endpoint(struct netif *netif, u8_t peer_index, const ip
 }
 
 
+void copy_wireguardif_peer_cfg(struct wireguard_peer *old_cfg, struct wireguardif_peer *new_cfg) {
+	old_cfg->connect_ip = new_cfg->endpoint_ip;
+	old_cfg->connect_port = new_cfg->endport_port;
+	old_cfg->ip = old_cfg->connect_ip;
+	old_cfg->port = old_cfg->connect_port;
+	old_cfg->keepalive_interval = new_cfg->keep_alive;
+	peer_add_ip(old_cfg, new_cfg->allowed_ip, new_cfg->allowed_mask);
+	memcpy(old_cfg->greatest_timestamp, new_cfg->greatest_timestamp, sizeof(old_cfg->greatest_timestamp));
+}
+
+
 err_t wireguardif_add_peer(struct netif *netif, struct wireguardif_peer *p, u8_t *peer_index) {
 	LWIP_ASSERT("netif != NULL", (netif != NULL));
 	LWIP_ASSERT("state != NULL", (netif->state != NULL));
@@ -800,6 +811,25 @@ err_t wireguardif_add_peer(struct netif *netif, struct wireguardif_peer *p, u8_t
 			*peer_index = WIREGUARDIF_INVALID_INDEX;
 		}
 	}
+	return result;
+}
+
+err_t wireguardif_update_peer(struct netif *netif, struct wireguardif_peer *new_peer_cfg, uint8_t wireguard_peer_index) {
+	LWIP_ASSERT("netif != NULL", (netif != NULL));
+	LWIP_ASSERT("state != NULL", (netif->state != NULL));
+	LWIP_ASSERT("p != NULL", (new_peer_cfg != NULL));
+	struct wireguard_peer *peer = NULL;
+	err_t result;
+
+	struct wireguard_device *device = (struct wireguard_device *)netif->state;
+	peer = peer_lookup_by_peer_index(device, wireguard_peer_index);
+	if (peer) {
+		copy_wireguardif_peer_cfg(peer, new_peer_cfg);
+		result = ERR_OK;
+	} else {
+		result = ERR_ARG;
+	}
+
 	return result;
 }
 
