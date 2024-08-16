@@ -54,8 +54,6 @@
 
 static struct netif wg_netif_struct = {0};
 static struct netif *wg_netif = NULL;
-static struct wireguardif_peer peer = {0};
-// static uint8_t wireguard_peer_index[WIREGUARD_MAX_PEERS] = WIREGUARDIF_INVALID_INDEX;
 static uint8_t preshared_key_decoded[WG_KEY_LEN];
 
 static esp_err_t esp_wireguard_peer_init(const wireguard_peer_config_t *config, struct wireguardif_peer *peer)
@@ -254,6 +252,7 @@ fail:
 esp_err_t esp_wireguard_add_peer(wireguard_peer_config_t *peer_config, uint8_t *wireguard_peer_index) {
     esp_err_t err = ESP_FAIL;
     err_t lwip_err = -1;
+    struct wireguardif_peer peer = {0};
 
     if (!peer_config || !wireguard_peer_index) {
         err = ESP_ERR_INVALID_ARG;
@@ -364,9 +363,7 @@ esp_err_t esp_wireguardif_peer_is_up(wireguard_ctx_t *ctx, uint8_t wireguard_pee
 
     lwip_err = wireguardif_peer_is_up(
             ctx->netif,
-            wireguard_peer_index,
-            &peer.endpoint_ip,
-            &peer.endport_port);
+            wireguard_peer_index);
 
     if (lwip_err != ERR_OK) {
         err = ESP_FAIL;

@@ -708,7 +708,7 @@ err_t wireguardif_disconnect(struct netif *netif, u8_t peer_index) {
 	return result;
 }
 
-err_t wireguardif_peer_is_up(struct netif *netif, u8_t peer_index, ip_addr_t *current_ip, u16_t *current_port) {
+err_t wireguardif_peer_is_up(struct netif *netif, u8_t peer_index) {
 	struct wireguard_peer *peer;
 	err_t result = wireguardif_lookup_peer(netif, peer_index, &peer);
 	if (result == ERR_OK) {
@@ -716,12 +716,6 @@ err_t wireguardif_peer_is_up(struct netif *netif, u8_t peer_index, ip_addr_t *cu
 			result = ERR_OK;
 		} else {
 			result = ERR_CONN;
-		}
-		if (current_ip) {
-			*current_ip = peer->ip;
-		}
-		if (current_port) {
-			*current_port = peer->port;
 		}
 	}
 	return result;
