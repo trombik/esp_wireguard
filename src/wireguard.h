@@ -51,6 +51,8 @@ extern "C" {
 
 #include "esp_tls.h"
 
+#include <sys/socket.h>
+
 // Platform-specific functions that need to be implemented per-platform
 #include "wireguard-platform.h"
 
@@ -185,11 +187,18 @@ enum conn_state_t {
         CONN_STATE_DERP_READY,
 };
 
+typedef struct {
+	char addr[INET_ADDRSTRLEN];
+	int port;
+	uint8_t addr_len;
+} EndPoint;
+
 struct derp_state_t {
     esp_tls_t *tls;
     TaskHandle_t read_interface_worker;
     enum conn_state_t conn_state;
     uint8_t ticks_connecting;
+	EndPoint endpoint;
 };
 
 struct wireguard_device {

@@ -15,6 +15,7 @@
 #include "esp_tls.h"
 #include "crypto.h"
 #include "sodium.h"
+#include "wireguardif.h"
 
 #define WIREGUARDIF_TIMER_MSECS 400
 #define DERP_CONNECTION_TIMEOUT_TICKS 20
@@ -24,32 +25,45 @@
 // Certificate:
 const char *cacert =
 "-----BEGIN CERTIFICATE-----\n"
-"MIIEijCCA3KgAwIBAgIQfU1CqStDHX5kU+fBmo1YdzANBgkqhkiG9w0BAQsFADBX\n"
-"MQswCQYDVQQGEwJCRTEZMBcGA1UEChMQR2xvYmFsU2lnbiBudi1zYTEQMA4GA1UE\n"
-"CxMHUm9vdCBDQTEbMBkGA1UEAxMSR2xvYmFsU2lnbiBSb290IENBMB4XDTIyMTAx\n"
-"MjAzNDk0M1oXDTI3MTAxMjAwMDAwMFowTDELMAkGA1UEBhMCQkUxGTAXBgNVBAoT\n"
-"EEdsb2JhbFNpZ24gbnYtc2ExIjAgBgNVBAMTGUFscGhhU1NMIENBIC0gU0hBMjU2\n"
-"IC0gRzQwggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQCtJCmVZhWIPzOH\n"
-"A3jP1QwkuDFT8/+DImyZlSt85UpZwq7G0Sqd+n8gLlHIZypQkad5VkT7OLU+MI78\n"
-"lC7LVwxpU19ExlaWL67ANyWG8XHx3AJFQoZhuDbvUeNzRQyQs6XS5wN6uDlF0Bf1\n"
-"AtCUQWrGGLGYwyC1xTrzgrFKpESsIXMqklUGTsh8i7DKZhRUVfgrPLJUkbbLUrLY\n"
-"42+KRCiwfSvBloC5PgDYnj3oMZ1aTe3Wfk3l1I4D3RKaJ4PU1qHXhHJOge2bjGIG\n"
-"l6MsaBN+BB2sr6EnxX0xnMIbew2oIfOFoLqs47vh/GH4JN0qql2WBHfDPVDm3b+G\n"
-"QxY6N/LXAgMBAAGjggFbMIIBVzAOBgNVHQ8BAf8EBAMCAYYwHQYDVR0lBBYwFAYI\n"
-"KwYBBQUHAwEGCCsGAQUFBwMCMBIGA1UdEwEB/wQIMAYBAf8CAQAwHQYDVR0OBBYE\n"
-"FE/LrKjC76vdg29rv86YPVxYJXYVMB8GA1UdIwQYMBaAFGB7ZhpFDZfKiVAvfQTN\n"
-"NKj//P1LMHoGCCsGAQUFBwEBBG4wbDAtBggrBgEFBQcwAYYhaHR0cDovL29jc3Au\n"
-"Z2xvYmFsc2lnbi5jb20vcm9vdHIxMDsGCCsGAQUFBzAChi9odHRwOi8vc2VjdXJl\n"
-"Lmdsb2JhbHNpZ24uY29tL2NhY2VydC9yb290LXIxLmNydDAzBgNVHR8ELDAqMCig\n"
-"JqAkhiJodHRwOi8vY3JsLmdsb2JhbHNpZ24uY29tL3Jvb3QuY3JsMCEGA1UdIAQa\n"
-"MBgwCAYGZ4EMAQIBMAwGCisGAQQBoDIKAQMwDQYJKoZIhvcNAQELBQADggEBABol\n"
-"9nNkiECpWQenQ7oVP1FhvRX/LWTdzXpdMmp/SELnEJhoOe+366E0dt8tWGg+ezAc\n"
-"DPeGYPmp83nAVLeDpji7Nqu8ldB8+G/B6U9GB8i2DDIAqSsFEvcMbWb5gZ2/DmRN\n"
-"cifGi9FKAuFu2wyft4s4DHwzL2CJ2zjMlUOM3RaE1cxuOs+Om6MCD9G7vnkAtSiC\n"
-"/OOfHO902f4yI2a48K+gKaAf3lISFXjd32pwQ21LpM3ueIGydaJ+1/z8nv+C7SUT\n"
-"5bHoz7cYU27LUvh1n2WSNnC6/QwFSoP6gNKa4POO/oO13xjhrLRHJ/04cKMbRALt\n"
-"JWQkPacJ8SJVhB2R7BI=\n"
+"MIIFgTCCBGmgAwIBAgIQOXJEOvkit1HX02wQ3TE1lTANBgkqhkiG9w0BAQwFADB7\n"
+"MQswCQYDVQQGEwJHQjEbMBkGA1UECAwSR3JlYXRlciBNYW5jaGVzdGVyMRAwDgYD\n"
+"VQQHDAdTYWxmb3JkMRowGAYDVQQKDBFDb21vZG8gQ0EgTGltaXRlZDEhMB8GA1UE\n"
+"AwwYQUFBIENlcnRpZmljYXRlIFNlcnZpY2VzMB4XDTE5MDMxMjAwMDAwMFoXDTI4\n"
+"MTIzMTIzNTk1OVowgYgxCzAJBgNVBAYTAlVTMRMwEQYDVQQIEwpOZXcgSmVyc2V5\n"
+"MRQwEgYDVQQHEwtKZXJzZXkgQ2l0eTEeMBwGA1UEChMVVGhlIFVTRVJUUlVTVCBO\n"
+"ZXR3b3JrMS4wLAYDVQQDEyVVU0VSVHJ1c3QgUlNBIENlcnRpZmljYXRpb24gQXV0\n"
+"aG9yaXR5MIICIjANBgkqhkiG9w0BAQEFAAOCAg8AMIICCgKCAgEAgBJlFzYOw9sI\n"
+"s9CsVw127c0n00ytUINh4qogTQktZAnczomfzD2p7PbPwdzx07HWezcoEStH2jnG\n"
+"vDoZtF+mvX2do2NCtnbyqTsrkfjib9DsFiCQCT7i6HTJGLSR1GJk23+jBvGIGGqQ\n"
+"Ijy8/hPwhxR79uQfjtTkUcYRZ0YIUcuGFFQ/vDP+fmyc/xadGL1RjjWmp2bIcmfb\n"
+"IWax1Jt4A8BQOujM8Ny8nkz+rwWWNR9XWrf/zvk9tyy29lTdyOcSOk2uTIq3XJq0\n"
+"tyA9yn8iNK5+O2hmAUTnAU5GU5szYPeUvlM3kHND8zLDU+/bqv50TmnHa4xgk97E\n"
+"xwzf4TKuzJM7UXiVZ4vuPVb+DNBpDxsP8yUmazNt925H+nND5X4OpWaxKXwyhGNV\n"
+"icQNwZNUMBkTrNN9N6frXTpsNVzbQdcS2qlJC9/YgIoJk2KOtWbPJYjNhLixP6Q5\n"
+"D9kCnusSTJV882sFqV4Wg8y4Z+LoE53MW4LTTLPtW//e5XOsIzstAL81VXQJSdhJ\n"
+"WBp/kjbmUZIO8yZ9HE0XvMnsQybQv0FfQKlERPSZ51eHnlAfV1SoPv10Yy+xUGUJ\n"
+"5lhCLkMaTLTwJUdZ+gQek9QmRkpQgbLevni3/GcV4clXhB4PY9bpYrrWX1Uu6lzG\n"
+"KAgEJTm4Diup8kyXHAc/DVL17e8vgg8CAwEAAaOB8jCB7zAfBgNVHSMEGDAWgBSg\n"
+"EQojPpbxB+zirynvgqV/0DCktDAdBgNVHQ4EFgQUU3m/WqorSs9UgOHYm8Cd8rID\n"
+"ZsswDgYDVR0PAQH/BAQDAgGGMA8GA1UdEwEB/wQFMAMBAf8wEQYDVR0gBAowCDAG\n"
+"BgRVHSAAMEMGA1UdHwQ8MDowOKA2oDSGMmh0dHA6Ly9jcmwuY29tb2RvY2EuY29t\n"
+"L0FBQUNlcnRpZmljYXRlU2VydmljZXMuY3JsMDQGCCsGAQUFBwEBBCgwJjAkBggr\n"
+"BgEFBQcwAYYYaHR0cDovL29jc3AuY29tb2RvY2EuY29tMA0GCSqGSIb3DQEBDAUA\n"
+"A4IBAQAYh1HcdCE9nIrgJ7cz0C7M7PDmy14R3iJvm3WOnnL+5Nb+qh+cli3vA0p+\n"
+"rvSNb3I8QzvAP+u431yqqcau8vzY7qN7Q/aGNnwU4M309z/+3ri0ivCRlv79Q2R+\n"
+"/czSAaF9ffgZGclCKxO/WIu6pKJmBHaIkU4MiRTOok3JMrO66BQavHHxW/BBC5gA\n"
+"CiIDEOUMsfnNkjcZ7Tvx5Dq2+UUTJnWvu6rvP3t3O9LEApE9GQDTF1w52z97GA1F\n"
+"zZOFli9d31kWTz9RvdVFGD/tSo7oBmF0Ixa1DVBzJ0RHfxBdiSprhTEUxOipakyA\n"
+"vGp4z7h/jnZymQyd/teRCBaho1+V\n"
 "-----END CERTIFICATE-----";
+
+enum ConnectionAttemptControl {
+	AttemptNow,
+	WaitForReconnect,
+	DoNotAttempt,
+};
+
+static enum ConnectionAttemptControl connection_attempt_control = DoNotAttempt;
 
 void derp_tick(struct wireguard_device *dev) {
 	err_t err = ESP_FAIL;
@@ -59,19 +73,31 @@ void derp_tick(struct wireguard_device *dev) {
 		is_any_peer_active |= dev->peers[i].active;
 	}
 
-	if (is_any_peer_active && dev->derp.tls == NULL) {
-		ESP_LOGE(TAG, "No DERP connection, but active peers exists -> initializing DERP connection");
+	if (is_any_peer_active && dev->derp.tls == NULL && connection_attempt_control == AttemptNow) {
+		ESP_LOGI(TAG, "No DERP connection, but active peers exists -> initializing DERP connection");
+		connection_attempt_control = WaitForReconnect;
 		err = derp_initiate_new_connection(dev);
-		ESP_LOGE(TAG, "New DERP connection initiation status, %d", err);
+		ESP_LOGI(TAG, "New DERP connection initiation status, %d", err);
 	} else if (!is_any_peer_active && dev->derp.tls) {
 		ESP_LOGE(TAG, "No active peer exists - Shutting down DERP connection");
 		err = derp_shutdown_connection(dev);
 		ESP_LOGE(TAG, "Shutdown of DERP connection status, %d", err);
-	} else if (dev->derp.tls && dev->derp.ticks_connecting > DERP_CONNECTION_TIMEOUT_TICKS) {
+	//! TODO: Keeping this here for now
+	// } else if (dev->derp.tls && dev->derp.ticks_connecting > DERP_CONNECTION_TIMEOUT_TICKS) {
 		//ESP_LOGE(TAG, "DERP connection timeout - Shutting down");
 		//err = derp_shutdown_connection(dev);
 		//dev->derp.ticks_connecting = 0;
 		//ESP_LOGE(TAG, "Shutdown of DERP connection status, %d", err);
+	} else if (dev->derp.tls && (connection_attempt_control == AttemptNow)) {
+		ESP_LOGI(TAG, "Initializing new DERP connection");
+		connection_attempt_control = WaitForReconnect;
+		err = derp_shutdown_connection(dev);
+		if (!err) {
+			ESP_LOGE(TAG, "DERP shutdown failed, %d", err);
+			return;
+		}
+		err = derp_initiate_new_connection(dev);
+		ESP_LOGI(TAG, "New DERP connection initiation status, %d", err);
 	}
 
 	if ((dev->derp.conn_state & CONN_STATE_TCP_DISCONNECTED) | (dev->derp.conn_state & CONN_STATE_DERP_READY)) {
@@ -109,7 +135,6 @@ end:
 }
 
 static void read_from_network_worker(void *arg) {
-	int err = ESP_FAIL;
 	struct wireguard_device *dev = (struct wireguard_device *)arg;
 	size_t max_data_pkt_size = 2048;
 	struct derp_pkt *data_pkt = mem_malloc(max_data_pkt_size);
@@ -118,7 +143,7 @@ static void read_from_network_worker(void *arg) {
 		goto end;
 	}
 
-	ESP_LOGE(TAG, "Read from network worker starting");
+	ESP_LOGI(TAG, "Read from network worker starting");
 
 	for (;;) {
 		int read_len = esp_tls_conn_read(dev->derp.tls, data_pkt, max_data_pkt_size);
@@ -143,7 +168,6 @@ static void read_from_network_worker(void *arg) {
 		}
 
 		// Data packet:
-		uint16_t offset = 0;
 		struct pbuf data;
 		data.payload = data_pkt->data.data;
 		data.tot_len = read_len - offsetof(struct derp_pkt, data.data);
@@ -151,7 +175,7 @@ static void read_from_network_worker(void *arg) {
 
 		// Always use localhost address
 		struct ip_addr addr = {0};
-		err = ipaddr_aton("127.0.0.1", &addr);
+		ipaddr_aton("127.0.0.1", &addr);
 
 		// Find which peer packet is being sent,
 		// we will assign port according to this
@@ -185,10 +209,15 @@ end:
 
 static void derp_transmit_task(void *arg) {
 	struct wireguard_device *dev = (struct wireguard_device *)arg;
-	uint8_t *read_buf = NULL;
+	char *read_buf = NULL;
 	int err = ESP_FAIL;
 
-	ESP_LOGE(TAG, "Allocating new socket");
+	if (!dev->derp.endpoint.addr_len) {
+		ESP_LOGE(TAG, "No DERP server set");
+		goto ret;
+	}
+
+	ESP_LOGI(TAG, "Allocating new socket");
 	dev->derp.tls = esp_tls_init();
 
 	if (dev->derp.tls == NULL) {
@@ -198,35 +227,35 @@ static void derp_transmit_task(void *arg) {
 
 	// Prepare TLS configuration
 	esp_tls_cfg_t tls_cfg = {0};
-	tls_cfg.cacert_buf = cacert;
+	tls_cfg.cacert_buf = (unsigned char*) cacert;
 	tls_cfg.cacert_bytes = strlen(cacert) + 1;
 	tls_cfg.skip_common_name = true;
 
 	// Try to establish TLS connection
-	const char *derp_ip = "149.88.19.146"; // TODO: make configurable
-	err = esp_tls_conn_new_sync(derp_ip, strlen(derp_ip), 8765, &tls_cfg, dev->derp.tls);
+	err = esp_tls_conn_new_sync(dev->derp.endpoint.addr, dev->derp.endpoint.addr_len, dev->derp.endpoint.port, &tls_cfg, dev->derp.tls);
 	if (err == -1) {
 		ESP_LOGE(TAG, "Failed to attempt TLS connection address %d", err);
 		goto ret;
 	}
-	ESP_LOGE(TAG, "Connection Established!");
+	ESP_LOGI(TAG, "Connection Established!");
 
 	dev->derp.conn_state = CONN_STATE_TCP_CONNECTING;
-
+	char http_req[128];
 	// Prepare HTTP upgrade request
-	const char * http_req =
-		"GET /derp HTTP/1.1\r\n"
-		"Host: 149.88.19.146\r\n"
-		"Connection: Upgrade\r\n"
-		"Upgrade: WebSocket\r\n"
-		"User-Agent: esp32/v1.0.0 esp\r\n\r\n";
+    snprintf(http_req, 128,
+        "GET /derp HTTP/1.1\r\n"
+	    "Host: %s\r\n"
+        "Connection: Upgrade\r\n"
+        "Upgrade: WebSocket\r\n"
+        "User-Agent: esp32/v1.0.0 esp\r\n\r\n",
+        dev->derp.endpoint.addr);
 	err = esp_tls_conn_write(dev->derp.tls, http_req, strlen(http_req));
 	if (err < 0) {
 		ESP_LOGE(TAG, "Failed to send HTTP upgrade request %d", err);
 		goto ret;
 	}
 
-	ESP_LOGE(TAG, "Request transmitted!");
+	ESP_LOGI(TAG, "Request transmitted!");
 
 	// Read HTTP response
 	const int read_buf_size = 2048;
@@ -247,24 +276,24 @@ static void derp_transmit_task(void *arg) {
 		goto ret;
 	}
 
-	ESP_LOGE(TAG, "Server has switched protocols");
+	ESP_LOGI(TAG, "Server has switched protocols");
 
 	// Verify length of the response
-	uint8_t *http_resp_end = strstr(read_buf, "\r\n\r\n");
+	char *http_resp_end = strstr(read_buf, "\r\n\r\n");
 	if (http_resp_end == NULL) {
 		ESP_LOGE(TAG, "HTTP response end not found");
 		goto ret;
 	}
 	http_resp_end += 4;
 
-	size_t http_resp_len = http_resp_end - (uint8_t *)read_buf;
+	size_t http_resp_len = http_resp_end - read_buf;
 	if (read_len - http_resp_len < 45) {
 		ESP_LOGE(TAG, "Server Key packet too short %d", http_resp_len);
 		goto ret;
 	}
 
-	struct derp_pkt *server_key_pkt = http_resp_end;
-	ESP_LOGE(TAG, "ServerKey received");
+	struct derp_pkt *server_key_pkt = (struct derp_pkt*) http_resp_end;
+	ESP_LOGI(TAG, "ServerKey received");
 
 	//TODO: Validate that the server key is in
 	//      fact matching the one provided via config
@@ -279,9 +308,9 @@ static void derp_transmit_task(void *arg) {
 	memcpy(client_key_pkt.client_key.client_public_key, dev->public_key, sizeof(client_key_pkt.client_key.client_public_key));
 	randombytes_buf(client_key_pkt.client_key.nonce, sizeof(client_key_pkt.client_key.nonce));
 
-	ESP_LOGE(TAG, "Attempting to encrypt the plaintext for client-key");
+	ESP_LOGI(TAG, "Attempting to encrypt the plaintext for client-key");
 	err = crypto_box_easy(client_key_pkt.client_key.ciphertext,
-			plaintext, strlen(plaintext),
+			(const unsigned char*) plaintext, strlen(plaintext),
 			client_key_pkt.client_key.nonce,
 			server_key_pkt->server_key.server_public_key,
 			dev->private_key);
@@ -290,29 +319,29 @@ static void derp_transmit_task(void *arg) {
 		goto ret;
 	}
 
-	ESP_LOGE(TAG, "Attempting to transmit ClientKey message");
+	ESP_LOGI(TAG, "Attempting to transmit ClientKey message");
 	err = esp_tls_conn_write(dev->derp.tls, &client_key_pkt, 106);
 	if (err < 0) {
 		ESP_LOGE(TAG, "Failed to send HTTP upgrade request %d", err);
 		goto ret;
 	}
 
-	ESP_LOGE(TAG, "Reading ServerInfo message");
+	ESP_LOGI(TAG, "Reading ServerInfo message");
 	read_len = esp_tls_conn_read(dev->derp.tls, read_buf, read_buf_size);
 	if (read_len < 5) {
 		ESP_LOGE(TAG, "Failed to receive ServerInfo message %d", err);
 		goto ret;
 	}
-	struct derp_pkt *serverInfo = read_buf;
+	struct derp_pkt *serverInfo = (struct derp_pkt*)read_buf;
 	if (serverInfo->type != 3) {
-		ESP_LOGE(TAG, "Unexpected packet during DERP handshake %s", serverInfo->type);
+		ESP_LOGE(TAG, "Unexpected packet during DERP handshake %d", serverInfo->type);
 		goto ret;
 	}
 
 	mem_free(read_buf);
 	read_buf = NULL;
 
-	ESP_LOGE(TAG, "DERP connection established succesfully");
+	ESP_LOGI(TAG, "DERP connection established succesfully");
 
 	dev->derp.conn_state = CONN_STATE_DERP_READY;
 
@@ -323,11 +352,25 @@ ret:
 		mem_free(read_buf);
 	}
 
+	if (dev->derp.conn_state == CONN_STATE_DERP_READY) {
+		connection_attempt_control = DoNotAttempt;
+	} else {
+		connection_attempt_control = AttemptNow;
+	}
+
 	vTaskDelete(NULL);
 }
 
+void set_derp_endpoint(struct wireguard_device *dev, const char* ip, int port) {
+	ESP_LOGI(TAG, "Updating derp with %s", ip);
+	dev->derp.endpoint.addr_len = strlen(ip);
+	memcpy(dev->derp.endpoint.addr, ip, dev->derp.endpoint.addr_len);
+	dev->derp.endpoint.addr[dev->derp.endpoint.addr_len] = '\0';
+	dev->derp.endpoint.port = port;
+	connection_attempt_control = AttemptNow;
+}
+
 err_t derp_initiate_new_connection(struct wireguard_device *dev) {
-	err_t err = ESP_FAIL;
 	LWIP_ASSERT("derp_tick: invalid state", dev->derp.conn_state == CONN_STATE_TCP_DISCONNECTED);
 	LWIP_ASSERT("derp_initiate_new_connection: invalid state", dev->derp.tls == NULL);
 
@@ -351,7 +394,6 @@ err_t derp_shutdown_connection(struct wireguard_device *dev) {
 
 
 err_t derp_send_packet(struct wireguard_device *dev, struct wireguard_peer *peer, struct pbuf *payload) {
-	err_t err = ESP_FAIL;
 
 	if (dev->derp.conn_state != CONN_STATE_DERP_READY) {
 		ESP_LOGE(TAG, "Requested to transmit packet while DERP is not ready. Dropping");
@@ -367,7 +409,7 @@ err_t derp_send_packet(struct wireguard_device *dev, struct wireguard_peer *peer
 	}
 
 	packet->type = 0x04; // SendPacket type
-	packet->length_be = BE32_TO_LE32(WIREGUARD_PUBLIC_KEY_LEN + 1 + payload->tot_len);
+	packet->length_be = BE32_TO_LE32((WIREGUARD_PUBLIC_KEY_LEN + 1 + payload->tot_len));
 	memcpy(packet->data.peer_public_key, peer->public_key, WIREGUARD_PUBLIC_KEY_LEN);
 	packet->data.subtype = 0x00;
 	pbuf_copy_partial(payload, packet->data.data, payload->tot_len, 0);
@@ -377,9 +419,5 @@ err_t derp_send_packet(struct wireguard_device *dev, struct wireguard_peer *peer
 		ESP_LOGE(TAG, "Worker busy -> dropping packet");
 	}
 
-cleanup:
 	return ESP_OK;
 }
-
-
-

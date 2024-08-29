@@ -93,15 +93,15 @@ static err_t wireguardif_peer_output(struct netif *netif, struct pbuf *q, struct
 	struct wireguard_device *device = (struct wireguard_device *)netif->state;
 	// Send to last know port, not the connect port
 	//TODO: Support DSCP and ECN - lwip requires this set on PCB globally, not per packet
-	return udp_sendto_if(device->udp_pcb, q, &peer->ip, peer->port, device->underlying_netif);
+	// return udp_sendto_if(device->udp_pcb, q, &peer->ip, peer->port, device->underlying_netif);
 
 	// Send via DERP
-	// return derp_send_packet(device, peer, q);
+	return derp_send_packet(device, peer, q);
 }
 
 static err_t wireguardif_device_output(struct wireguard_device *device, struct pbuf *q, const ip_addr_t *ipaddr, u16_t port) {
 	LWIP_ASSERT("wireguardif_device_output: Not Implemented", false);
-	//return udp_sendto_if(device->udp_pcb, q, ipaddr, port, device->underlying_netif);
+	// return udp_sendto_if(device->udp_pcb, q, ipaddr, port, device->underlying_netif);
 }
 
 static err_t wireguardif_output_to_peer(struct netif *netif, struct pbuf *q, const ip_addr_t *ipaddr, struct wireguard_peer *peer) {
@@ -613,7 +613,7 @@ void wireguardif_network_rx(void *arg, struct udp_pcb *pcb, struct pbuf *p, cons
 			break;
 	}
 	// Release data!
-	pbuf_free(p); // -> DERP module will handle memory freeing for this packet
+	// pbuf_free(p); // -> DERP module will handle memory freeing for this packet
 }
 
 static err_t wireguard_start_handshake(struct netif *netif, struct wireguard_peer *peer) {
@@ -884,7 +884,7 @@ static void wireguardif_tmr(void *arg) {
 	// Reschedule this timer
 	sys_timeout(WIREGUARDIF_TIMER_MSECS, wireguardif_tmr, device);
 
-	// derp_tick(device);
+	derp_tick(device);
 
 	// Check periodic things
 	bool link_up = false;
