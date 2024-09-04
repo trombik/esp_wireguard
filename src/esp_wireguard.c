@@ -100,10 +100,8 @@ static esp_err_t esp_wireguard_peer_init(const wireguard_peer_config_t *config, 
 
     /* Allow all IPs through tunnel */
     {
-        ip_addr_t allowed_ip = IPADDR4_INIT_BYTES(0, 0, 0, 0);
-        peer->allowed_ip = allowed_ip;
-        ip_addr_t allowed_mask = IPADDR4_INIT_BYTES(0, 0, 0, 0);
-        peer->allowed_mask = allowed_mask;
+        ipaddr_aton(config->allowed_ip, &peer->allowed_ip);
+        ipaddr_aton(config->allowed_ip_mask, &peer->allowed_mask);
     }
 
     /* resolve peer name or IP address */
@@ -166,7 +164,7 @@ static esp_err_t esp_wireguard_netif_create(const wireguard_config_t *config)
     wg.listen_port = config->listen_port;
     wg.bind_netif = NULL;
 
-    ESP_LOGI(TAG, "allowed_ip: %s", config->base_ip);
+    ESP_LOGI(TAG, "base_ip: %s", config->base_ip);
 
     if (ipaddr_aton(config->base_ip, &ip_addr) != 1) {
         ESP_LOGE(TAG, "ipaddr_aton: invalid allowed_ip: `%s`", config->base_ip);
@@ -345,9 +343,9 @@ fail:
     return err;
 }
 
-esp_err_t esp_wireguard_remove_peer(wireguard_ctx_t* ctx, wireguard_peer_config_t *peer_config) {
+esp_err_t esp_wireguard_remove_peer(wireguard_ctx_t* ctx, const char* pubkey) {
     esp_err_t err;
-    err = esp_wireguard_remove_peer_by_key(ctx, (uint8_t*) peer_config->public_key, LOOKUP_BY_PUBKEY);
+    err = esp_wireguard_remove_peer_by_key(ctx, (uint8_t*) pubkey, LOOKUP_BY_PUBKEY);
     return err;
 }
 
@@ -374,7 +372,7 @@ fail:
     return err;
 }
 
-esp_err_t esp_wireguardif_peer_is_up(wireguard_ctx_t *ctx, wireguard_peer_config_t *peer_config)
+esp_err_t esp_wireguardif_peer_is_up(wireguard_ctx_t *ctx, const char *pubkey)
 {
     esp_err_t err;
     err_t lwip_err;
@@ -386,7 +384,7 @@ esp_err_t esp_wireguardif_peer_is_up(wireguard_ctx_t *ctx, wireguard_peer_config
 
     lwip_err = wireguardif_peer_is_up(
             ctx->netif,
-            (uint8_t*) peer_config->public_key);
+            (uint8_t*) pubkey);
 
     if (lwip_err != ERR_OK) {
         err = ESP_FAIL;

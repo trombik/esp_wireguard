@@ -39,9 +39,6 @@ extern "C" {
 #include <esp_err.h>
 #include <lwip/netif.h>
 
-#define WIREGUARD_INVALID_PEER (0xFF)
-#define WG_MAX_PEERS 1
-
 #define ESP_WIREGUARD_CONFIG_DEFAULT() { \
     .private_key = NULL, \
     .listen_port = 0, \
@@ -137,7 +134,7 @@ esp_err_t esp_wireguard_set_default(wireguard_ctx_t *ctx);
 /**
  * @brief Test if the peer is up.
  */
-esp_err_t esp_wireguardif_peer_is_up(wireguard_ctx_t *ctx, wireguard_peer_config_t *peer_config);
+esp_err_t esp_wireguardif_peer_is_up(wireguard_ctx_t *ctx, const char *pubkey);
 
 /**
  * @brief Disconnect from the peer
@@ -165,7 +162,7 @@ esp_err_t esp_wireguard_add_peer(wireguard_ctx_t *ctx, wireguard_peer_config_t* 
  * @return
  *      - ESP_OK on success.
  */
-esp_err_t esp_wireguard_remove_peer(wireguard_ctx_t* ctx, wireguard_peer_config_t *peer_config);
+esp_err_t esp_wireguard_remove_peer(wireguard_ctx_t* ctx, const char *pubkey);
 
 /**
  * @brief Update a peer in wireguard
