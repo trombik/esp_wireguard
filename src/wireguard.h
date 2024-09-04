@@ -66,7 +66,7 @@ extern "C" {
 #define WIREGUARD_PRIVATE_KEY_LEN	(32)
 // Symmetric session keys are chacha20/poly1305 which uses 32 byte keys
 #define WIREGUARD_SESSION_KEY_LEN	(32)
-
+#define WIREGUARD_ENCODED_PUBLIC_KEY_LEN  {44}
 // Timers / Limits
 #define WIREGUARD_COOKIE_LEN		(16)
 #define COOKIE_SECRET_MAX_AGE		(2 * 60)
@@ -134,6 +134,7 @@ struct wireguard_peer {
 	struct wireguard_allowed_ip allowed_source_ips[WIREGUARD_MAX_SRC_IPS];
 
 	uint8_t public_key[WIREGUARD_PUBLIC_KEY_LEN];
+	uint8_t encoded_public_key[WIREGUARD_ENCODED_PUBLIC_KEY_LEN];
 	uint8_t preshared_key[WIREGUARD_SESSION_KEY_LEN];
 
 	// Precomputed DH(Sprivi,Spubr) with device private key, and peer public key

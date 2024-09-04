@@ -93,10 +93,10 @@ static err_t wireguardif_peer_output(struct netif *netif, struct pbuf *q, struct
 	struct wireguard_device *device = (struct wireguard_device *)netif->state;
 	// Send to last know port, not the connect port
 	//TODO: Support DSCP and ECN - lwip requires this set on PCB globally, not per packet
-	// return udp_sendto_if(device->udp_pcb, q, &peer->ip, peer->port, device->underlying_netif);
+	return udp_sendto_if(device->udp_pcb, q, &peer->ip, peer->port, device->underlying_netif);
 
 	// Send via DERP
-	return derp_send_packet(device, peer, q);
+	// return derp_send_packet(device, peer, q);
 }
 
 static err_t wireguardif_device_output(struct wireguard_device *device, struct pbuf *q, const ip_addr_t *ipaddr, u16_t port) {
@@ -654,7 +654,7 @@ static err_t wireguard_start_handshake(struct netif *netif, struct wireguard_pee
 	return result;
 }
 
-static err_t wireguardif_lookup_peer(struct netif *netif, u8_t peer_index, struct wireguard_peer **out) {
+static err_t wireguardif_lookup_peer(struct netif *netif, uint8_t* key, struct wireguard_peer **out, enum PEER_LOOKUP_TYPE lookup_type) {
 	LWIP_ASSERT("netif != NULL", (netif != NULL));
 	LWIP_ASSERT("state != NULL", (netif->state != NULL));
 	struct wireguard_device *device = (struct wireguard_device *)netif->state;
@@ -662,7 +662,17 @@ static err_t wireguardif_lookup_peer(struct netif *netif, u8_t peer_index, struc
 	err_t result;
 
 	if (device->valid) {
-		peer = peer_lookup_by_peer_index(device, peer_index);
+		switch (lookup_type)
+		{
+		case LOOKUP_BY_PUBKEY:
+			peer = peer_lookup_by_pubkey(device, key);
+			break;
+		case LOOKUP_BY_IDX:
+			peer = peer_lookup_by_peer_index(device, *key);
+			break;
+		default:
+			break;
+		}
 		if (peer) {
 			result = ERR_OK;
 		} else {
@@ -677,7 +687,7 @@ static err_t wireguardif_lookup_peer(struct netif *netif, u8_t peer_index, struc
 
 err_t wireguardif_connect(struct netif *netif, u8_t peer_index) {
 	struct wireguard_peer *peer;
-	err_t result = wireguardif_lookup_peer(netif, peer_index, &peer);
+	err_t result = wireguardif_lookup_peer(netif, &peer_index, &peer, LOOKUP_BY_IDX);
 	if (result == ERR_OK) {
 		// Check that a valid connect ip and port have been set
 		if (!ip_addr_isany(&peer->connect_ip) && (peer->connect_port > 0)) {
@@ -693,9 +703,9 @@ err_t wireguardif_connect(struct netif *netif, u8_t peer_index) {
 	return result;
 }
 
-err_t wireguardif_disconnect(struct netif *netif, u8_t peer_index) {
+err_t wireguardif_disconnect(struct netif *netif, uint8_t* peer_key, enum PEER_LOOKUP_TYPE key_type) {
 	struct wireguard_peer *peer;
-	err_t result = wireguardif_lookup_peer(netif, peer_index, &peer);
+	err_t result = wireguardif_lookup_peer(netif, peer_key, &peer, key_type);
 	if (result == ERR_OK) {
 		// Set the flag that we want to try connecting
 		peer->active = false;
@@ -708,9 +718,9 @@ err_t wireguardif_disconnect(struct netif *netif, u8_t peer_index) {
 	return result;
 }
 
-err_t wireguardif_peer_is_up(struct netif *netif, u8_t peer_index) {
+err_t wireguardif_peer_is_up(struct netif *netif, uint8_t* pubkey) {
 	struct wireguard_peer *peer;
-	err_t result = wireguardif_lookup_peer(netif, peer_index, &peer);
+	err_t result = wireguardif_lookup_peer(netif, pubkey, &peer, LOOKUP_BY_PUBKEY);
 	if (result == ERR_OK) {
 		if ((peer->curr_keypair.valid) || (peer->prev_keypair.valid)) {
 			result = ERR_OK;
@@ -721,9 +731,9 @@ err_t wireguardif_peer_is_up(struct netif *netif, u8_t peer_index) {
 	return result;
 }
 
-err_t wireguardif_remove_peer(struct netif *netif, u8_t peer_index) {
+err_t wireguardif_remove_peer(struct netif *netif, uint8_t* key,  enum PEER_LOOKUP_TYPE key_type) {
 	struct wireguard_peer *peer;
-	err_t result = wireguardif_lookup_peer(netif, peer_index, &peer);
+	err_t result = wireguardif_lookup_peer(netif, key, &peer, key_type);
 	if (result == ERR_OK) {
 		crypto_zero(peer, sizeof(struct wireguard_peer));
 		peer->valid = false;
@@ -732,9 +742,9 @@ err_t wireguardif_remove_peer(struct netif *netif, u8_t peer_index) {
 	return result;
 }
 
-err_t wireguardif_update_endpoint(struct netif *netif, u8_t peer_index, const ip_addr_t *ip, u16_t port) {
+err_t wireguardif_update_endpoint(struct netif *netif, uint8_t* pubkey, const ip_addr_t *ip, u16_t port) {
 	struct wireguard_peer *peer;
-	err_t result = wireguardif_lookup_peer(netif, peer_index, &peer);
+	err_t result = wireguardif_lookup_peer(netif, pubkey, &peer, LOOKUP_BY_PUBKEY);
 	if (result == ERR_OK) {
 		peer->connect_ip = *ip;
 		peer->connect_port = port;
@@ -771,7 +781,7 @@ err_t wireguardif_add_peer(struct netif *netif, struct wireguardif_peer *p, u8_t
 			&& (public_key_len == WIREGUARD_PUBLIC_KEY_LEN)) {
 
 		// See if the peer is already registered
-		peer = peer_lookup_by_pubkey(device, public_key);
+		peer = peer_lookup_by_pubkey(device, p->public_key);
 		if (!peer) {
 			// Not active - see if we have room to allocate a new one
 			peer = peer_alloc(device);
@@ -786,6 +796,7 @@ err_t wireguardif_add_peer(struct netif *netif, struct wireguardif_peer *p, u8_t
 					peer->keepalive_interval = p->keep_alive;
 					peer_add_ip(peer, p->allowed_ip, p->allowed_mask);
 					memcpy(peer->greatest_timestamp, p->greatest_timestamp, sizeof(peer->greatest_timestamp));
+					memcpy(peer->encoded_public_key, p->public_key, WIREGUARD_ENCODED_PUBLIC_KEY_LEN);
 
 					result = ERR_OK;
 				} else {
@@ -814,7 +825,7 @@ err_t wireguardif_add_peer(struct netif *netif, struct wireguardif_peer *p, u8_t
 	return result;
 }
 
-err_t wireguardif_update_peer(struct netif *netif, struct wireguardif_peer *new_peer_cfg, uint8_t wireguard_peer_index) {
+err_t wireguardif_update_peer(struct netif *netif, struct wireguardif_peer *new_peer_cfg, uint8_t* public_key) {
 	LWIP_ASSERT("netif != NULL", (netif != NULL));
 	LWIP_ASSERT("state != NULL", (netif->state != NULL));
 	LWIP_ASSERT("p != NULL", (new_peer_cfg != NULL));
@@ -822,7 +833,7 @@ err_t wireguardif_update_peer(struct netif *netif, struct wireguardif_peer *new_
 	err_t result;
 
 	struct wireguard_device *device = (struct wireguard_device *)netif->state;
-	peer = peer_lookup_by_peer_index(device, wireguard_peer_index);
+	peer = peer_lookup_by_pubkey(device, public_key);
 	if (peer) {
 		copy_wireguardif_peer_cfg(peer, new_peer_cfg);
 		result = ERR_OK;
@@ -885,7 +896,7 @@ static void wireguardif_tmr(void *arg) {
 	// Reschedule this timer
 	sys_timeout(WIREGUARDIF_TIMER_MSECS, wireguardif_tmr, device);
 
-	derp_tick(device);
+	// derp_tick(device);
 
 	// Check periodic things
 	bool link_up = false;

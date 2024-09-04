@@ -73,6 +73,11 @@ struct wireguardif_peer {
 	u16_t keep_alive;
 };
 
+enum PEER_LOOKUP_TYPE{
+	LOOKUP_BY_PUBKEY,
+	LOOKUP_BY_IDX,
+};
+
 #define WIREGUARDIF_INVALID_INDEX (0xFF)
 
 /* static struct netif wg_netif_struct = {0};
@@ -117,25 +122,25 @@ void wireguardif_peer_init(struct wireguardif_peer *peer);
 err_t wireguardif_add_peer(struct netif *netif, struct wireguardif_peer *peer, u8_t *peer_index);
 
 // Remove the given peer from the network interface
-err_t wireguardif_remove_peer(struct netif *netif, u8_t peer_index);
+err_t wireguardif_remove_peer(struct netif *netif, uint8_t* key, enum PEER_LOOKUP_TYPE key_type);
 
 // Update the "connect" IP of the given peer
-err_t wireguardif_update_endpoint(struct netif *netif, u8_t peer_index, const ip_addr_t *ip, u16_t port);
+err_t wireguardif_update_endpoint(struct netif *netif, uint8_t* pubkey, const ip_addr_t *ip, u16_t port);
 
 // Try and connect to the given peer
 err_t wireguardif_connect(struct netif *netif, u8_t peer_index);
 
 // Stop trying to connect to the given peer
-err_t wireguardif_disconnect(struct netif *netif, u8_t peer_index);
+err_t wireguardif_disconnect(struct netif *netif, uint8_t* key,  enum PEER_LOOKUP_TYPE key_type);
 
 // Shutdown the WireGuard interface
 void wireguardif_shutdown(struct netif *netif);
 
 // Is the given peer "up"? A peer is up if it has a valid session key it can communicate with
-err_t wireguardif_peer_is_up(struct netif *netif, u8_t peer_index);
+err_t wireguardif_peer_is_up(struct netif *netif, uint8_t* pubkey);
 
 // Updates config of an added peer
-err_t wireguardif_update_peer(struct netif *netif, struct wireguardif_peer *peer, uint8_t wireguard_peer_index);
+err_t wireguardif_update_peer(struct netif *netif, struct wireguardif_peer *peer, uint8_t* public_key);
 #ifdef __cplusplus
 }
 #endif

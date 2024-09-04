@@ -249,12 +249,13 @@ fail:
     return err;
 }
 
-esp_err_t esp_wireguard_add_peer(wireguard_peer_config_t *peer_config, uint8_t *wireguard_peer_index) {
+esp_err_t esp_wireguard_add_peer(wireguard_ctx_t *ctx, wireguard_peer_config_t *peer_config) {
     esp_err_t err = ESP_FAIL;
     err_t lwip_err = -1;
+    uint8_t wireguard_peer_index;
     struct wireguardif_peer peer = {0};
 
-    if (!peer_config || !wireguard_peer_index) {
+    if (!peer_config) {
         err = ESP_ERR_INVALID_ARG;
         goto fail;
     }
@@ -268,8 +269,8 @@ esp_err_t esp_wireguard_add_peer(wireguard_peer_config_t *peer_config, uint8_t *
         }
 
         /* Register the new WireGuard peer with the network interface */
-        lwip_err = wireguardif_add_peer(wg_netif, &peer, wireguard_peer_index);
-        if (lwip_err != ERR_OK || *wireguard_peer_index == WIREGUARDIF_INVALID_INDEX) {
+        lwip_err = wireguardif_add_peer(wg_netif, &peer, &wireguard_peer_index);
+        if (lwip_err != ERR_OK || wireguard_peer_index == WIREGUARDIF_INVALID_INDEX) {
             ESP_LOGE(TAG, "wireguardif_add_peer: %i", lwip_err);
             goto fail;
         }
@@ -278,7 +279,7 @@ esp_err_t esp_wireguard_add_peer(wireguard_peer_config_t *peer_config, uint8_t *
             goto fail;
     }
 
-    lwip_err = wireguardif_connect(wg_netif, *wireguard_peer_index);
+    lwip_err = wireguardif_connect(wg_netif, wireguard_peer_index);
     if (lwip_err != ERR_OK) {
         ESP_LOGE(TAG, "wireguardif_connect: %i", lwip_err);
         err = ESP_FAIL;
@@ -289,11 +290,11 @@ fail:
     return err;
 }
 
-esp_err_t esp_wireguard_update_peer(wireguard_peer_config_t *peer_config, uint8_t wireguard_peer_index) {
+esp_err_t esp_wireguard_update_peer(wireguard_ctx_t *ctx, wireguard_peer_config_t *peer_config) {
     esp_err_t err = ESP_FAIL;
     struct wireguardif_peer peer = {0};
 
-    if (!peer_config || !wireguard_peer_index) {
+    if (!peer_config) {
         err = ESP_ERR_INVALID_ARG;
         goto fail;
     }
@@ -304,7 +305,7 @@ esp_err_t esp_wireguard_update_peer(wireguard_peer_config_t *peer_config, uint8_
             ESP_LOGE(TAG, "esp_wireguard_peer_init: %s", esp_err_to_name(err));
             goto fail;
         }
-    wireguardif_update_peer(wg_netif, &peer, wireguard_peer_index);
+    wireguardif_update_peer(wg_netif, &peer, (uint8_t*) peer_config->public_key);
 
     err = ESP_OK;
 fail:
@@ -324,29 +325,29 @@ fail:
     return err;
 }
 
-esp_err_t esp_wireguard_remove_peer(wireguard_ctx_t* ctx, uint8_t *wireguard_peer_index) {
-    esp_err_t err;
-    err_t lwip_err;
-
-    if (!ctx || !wireguard_peer_index) {
-        err = ESP_ERR_INVALID_ARG;
+esp_err_t esp_wireguard_remove_peer_by_key(wireguard_ctx_t* ctx, uint8_t* key, enum PEER_LOOKUP_TYPE key_type) {
+    esp_err_t err = ESP_FAIL;
+    err_t lwip_err = -1;
+    err = wireguardif_disconnect(ctx->netif, key, key_type);
+    if (err != ERR_OK) {
+        ESP_LOGW(TAG, "wireguardif_disconnect: peer_index: %" PRIu8 " err: %i", *key, lwip_err);
         goto fail;
     }
 
-    lwip_err = wireguardif_disconnect(ctx->netif, *wireguard_peer_index);
-    if (lwip_err != ERR_OK) {
-        ESP_LOGW(TAG, "wireguardif_disconnect: peer_index: %" PRIu8 " err: %i", *wireguard_peer_index, lwip_err);
+    err = wireguardif_remove_peer(ctx->netif, key, key_type);
+    if (err != ERR_OK) {
+        ESP_LOGW(TAG, "wireguardif_remove_peer: peer_index: %" PRIu8 " err: %i", *key, lwip_err);
+        goto fail;
     }
-
-    lwip_err = wireguardif_remove_peer(ctx->netif, *wireguard_peer_index);
-    if (lwip_err != ERR_OK) {
-        ESP_LOGW(TAG, "wireguardif_remove_peer: peer_index: %" PRIu8 " err: %i", *wireguard_peer_index, lwip_err);
-    }
-
-    *wireguard_peer_index = WIREGUARDIF_INVALID_INDEX;
 
     err = ESP_OK;
 fail:
+    return err;
+}
+
+esp_err_t esp_wireguard_remove_peer(wireguard_ctx_t* ctx, wireguard_peer_config_t *peer_config) {
+    esp_err_t err;
+    err = esp_wireguard_remove_peer_by_key(ctx, (uint8_t*) peer_config->public_key, LOOKUP_BY_PUBKEY);
     return err;
 }
 
@@ -360,7 +361,7 @@ esp_err_t esp_wireguard_disconnect(wireguard_ctx_t *ctx)
     }
 
     for (uint8_t wg_idx = 0; wg_idx < WIREGUARD_MAX_PEERS; wg_idx++) {
-        err = esp_wireguard_remove_peer(ctx, &wg_idx);
+        err = esp_wireguard_remove_peer_by_key(ctx, &wg_idx, LOOKUP_BY_IDX);
     }
 
     wireguardif_shutdown(ctx->netif);
@@ -373,7 +374,7 @@ fail:
     return err;
 }
 
-esp_err_t esp_wireguardif_peer_is_up(wireguard_ctx_t *ctx, uint8_t wireguard_peer_index)
+esp_err_t esp_wireguardif_peer_is_up(wireguard_ctx_t *ctx, wireguard_peer_config_t *peer_config)
 {
     esp_err_t err;
     err_t lwip_err;
@@ -385,7 +386,7 @@ esp_err_t esp_wireguardif_peer_is_up(wireguard_ctx_t *ctx, uint8_t wireguard_pee
 
     lwip_err = wireguardif_peer_is_up(
             ctx->netif,
-            wireguard_peer_index);
+            (uint8_t*) peer_config->public_key);
 
     if (lwip_err != ERR_OK) {
         err = ESP_FAIL;

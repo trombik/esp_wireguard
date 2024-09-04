@@ -93,7 +93,7 @@ struct wireguard_peer *peer_lookup_by_pubkey(struct wireguard_device *device, ui
 	for (x=0; x < WIREGUARD_MAX_PEERS; x++) {
 		tmp = &device->peers[x];
 		if (tmp->valid) {
-			if (memcmp(tmp->public_key, public_key, WIREGUARD_PUBLIC_KEY_LEN) == 0) {
+			if (memcmp(tmp->encoded_public_key, public_key, WIREGUARD_PUBLIC_KEY_LEN) == 0) {
 				result = tmp;
 				break;
 			}
