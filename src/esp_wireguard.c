@@ -98,12 +98,14 @@ static esp_err_t esp_wireguard_peer_init(const wireguard_peer_config_t *config, 
     }
     peer->keep_alive = config->persistent_keepalive;
 
-    /* Allow all IPs through tunnel */
-    {
-        ipaddr_aton(config->allowed_ip, &peer->allowed_ip);
-        ipaddr_aton(config->allowed_ip_mask, &peer->allowed_mask);
+    /* Allowed IPs through tunnel */
+    for (int i = 0; i < WIREGUARD_MAX_SRC_IPS; i++) {
+        // Check whether allowed_ip config is initialized or not
+        if (config->allowed_ip[i]) {
+            ipaddr_aton(config->allowed_ip[i], &(peer->allowed_ip[i]));
+            ipaddr_aton(config->allowed_ip_mask[i], &(peer->allowed_mask[i]));
+        }
     }
-
     /* resolve peer name or IP address */
     {
         ip_addr_t endpoint_ip;

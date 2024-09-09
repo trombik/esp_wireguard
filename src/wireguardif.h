@@ -64,8 +64,8 @@ struct wireguardif_peer {
 	uint8_t greatest_timestamp[12];
 
 	// Allowed ip/netmask (can add additional later but at least one is required)
-	ip_addr_t allowed_ip;
-	ip_addr_t allowed_mask;
+	ip_addr_t allowed_ip[CONFIG_WIREGUARD_MAX_SRC_IPS];
+	ip_addr_t allowed_mask[CONFIG_WIREGUARD_MAX_SRC_IPS];
 
 	// End-point details (may be blank)
 	ip_addr_t endpoint_ip;

@@ -236,31 +236,19 @@ static void wireguardif_process_response_message(struct wireguard_device *device
 	}
 }
 
-static bool peer_add_ip(struct wireguard_peer *peer, ip_addr_t ip, ip_addr_t mask) {
+static bool peer_add_ip(struct wireguard_peer *peer, ip_addr_t ip[WIREGUARD_MAX_SRC_IPS], ip_addr_t mask[WIREGUARD_MAX_SRC_IPS]) {
 	bool result = false;
 	struct wireguard_allowed_ip *allowed;
 	int x;
-	// Look for existing match first
-	for (x=0; x < WIREGUARD_MAX_SRC_IPS; x++) {
-		allowed = &peer->allowed_source_ips[x];
-		if ((allowed->valid) && ip_addr_cmp(&allowed->ip, &ip) && ip_addr_cmp(&allowed->mask, &mask)) {
-			result = true;
-			break;
-		}
-	}
-	if (!result) {
-		// Look for a free slot
 		for (x=0; x < WIREGUARD_MAX_SRC_IPS; x++) {
-			allowed = &peer->allowed_source_ips[x];
-			if (!allowed->valid) {
+			if (!ip_addr_isany(&ip[x])) {
+				allowed = &peer->allowed_source_ips[x];
 				allowed->valid = true;
-				allowed->ip = ip;
-				allowed->mask = mask;
+				allowed->ip = ip[x];
+				allowed->mask = mask[x];
 				result = true;
-				break;
 			}
 		}
-	}
 	return result;
 }
 
@@ -1065,8 +1053,10 @@ void wireguardif_peer_init(struct wireguardif_peer *peer) {
 	ip_addr_set_any(false, &peer->endpoint_ip);
 	peer->endport_port = WIREGUARDIF_DEFAULT_PORT;
 	peer->keep_alive = 0;
-	ip_addr_set_any(false, &peer->allowed_ip);
-	ip_addr_set_any(false, &peer->allowed_mask);
+	for (int i = 0; i < CONFIG_WIREGUARD_MAX_SRC_IPS; i++ ) {
+		ip_addr_set_any(false, &peer->allowed_ip[i]);
+		ip_addr_set_any(false, &peer->allowed_mask[i]);
+	}
 	memset(peer->greatest_timestamp, 0, sizeof(peer->greatest_timestamp));
 	peer->preshared_key = NULL;
 }

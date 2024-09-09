@@ -65,16 +65,16 @@ static esp_err_t wireguard_setup(wireguard_ctx_t *ctx)
 
     peer_one_config.public_key = CONFIG_WG_PEER_ONE_PUBLIC_KEY;
     peer_one_config.preshared_key = NULL;
-    peer_one_config.allowed_ip = CONFIG_WG_PEER_ONE_ADDRESS;
-    peer_one_config.allowed_ip_mask = CONFIG_WG_PEER_TWO_MASK;
+    peer_one_config.allowed_ip[0] = CONFIG_WG_PEER_ONE_ADDRESS;
+    peer_one_config.allowed_ip_mask[0] = CONFIG_WG_PEER_TWO_MASK;
     peer_one_config.endpoint = CONFIG_WG_PEER_ONE_ENDPOINT;
     peer_one_config.port = CONFIG_WG_PEER_ONE_PORT;
     peer_one_config.persistent_keepalive = CONFIG_WG_PERSISTENT_KEEP_ALIVE;
 
     peer_two_config.public_key = CONFIG_WG_PEER_TWO_PUBLIC_KEY;
     peer_two_config.preshared_key = NULL;
-    peer_two_config.allowed_ip = CONFIG_WG_PEER_TWO_ADDRESS;
-    peer_two_config.allowed_ip_mask = CONFIG_WG_PEER_TWO_MASK;
+    peer_two_config.allowed_ip[0] = CONFIG_WG_PEER_TWO_ADDRESS;
+    peer_two_config.allowed_ip_mask[0] = CONFIG_WG_PEER_TWO_MASK;
     peer_two_config.endpoint = CONFIG_WG_PEER_TWO_ENDPOINT;
     peer_two_config.port = CONFIG_WG_PEER_TWO_PORT;
     peer_two_config.persistent_keepalive = CONFIG_WG_PERSISTENT_KEEP_ALIVE;
@@ -450,7 +450,7 @@ void app_main(void)
     ESP_LOGI(TAG, "Disconnected peer 2");
 
     vTaskDelay(1000 * 10 / portTICK_PERIOD_MS);
-    peer_one_config.allowed_ip = CONFIG_EXAMPLE_FALSE_ADDRESS;
+    peer_one_config.allowed_ip[0] = CONFIG_EXAMPLE_FALSE_ADDRESS;
     esp_wireguard_update_peer(&ctx, &peer_one_config);
     ESP_LOGI(TAG, "Peer 1 updated!");
     vTaskDelay(1000 * 10 / portTICK_PERIOD_MS);
