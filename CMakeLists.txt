@@ -12,7 +12,7 @@ idf_component_register(
          "src/nacl/crypto_scalarmult/curve25519/ref/smult.c"
     INCLUDE_DIRS "include"
     PRIV_INCLUDE_DIRS "src"
-    REQUIRES esp_netif lwip mbedtls)
+    REQUIRES esp_netif esp-tls libsodium lwip mbedtls)
 
 if(${IDF_VERSION_MAJOR} STREQUAL 5)
     set_source_files_properties(src/crypto/refc/x25519.c

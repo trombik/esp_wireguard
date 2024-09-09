@@ -21,13 +21,13 @@ menu "Example Configuration"
 
     config WG_PRIVATE_KEY
         string "Wireguard Private Key"
-        default "IsvT72MAXzA8EtV0FSD1QT59B4x0oe6Uea5rd/dDzhE="
+        default "IDMj7MCa84aqdP2Co9F8FumSjk2lWfnixdVk3oR6zXI="
         help
             Private key of the WireGuard device.
 
     config WG_LOCAL_IP_ADDRESS
         string "Wireguard local IP address"
-        default "192.168.4.58"
+        default "10.0.0.2"
         help
             Local IP address of the WireGuard device.
 
@@ -39,31 +39,73 @@ menu "Example Configuration"
 
     config WG_LOCAL_PORT
         int "Wireguard local port"
-        default 11010
+        default 53820
         help
             Local port to listen.
 
-    config WG_PEER_PUBLIC_KEY
+    config WG_PEER_ONE_PUBLIC_KEY
         string "Wireguard remote peer public key"
-        default "FjrsQ/HD1Q8fUlFILIasDlOuajMeZov4NGqMJpkswiw="
+        default "T7d7ZIIS7QZcPVc3TVKN8RN0u9EAp4BpULYUwv9yXFk="
         help
-            Public key of the remote peer.
+            Public key of the 1st remote peer.
+
+    config WG_PEER_TWO_PUBLIC_KEY
+        string "Wireguard remote peer public key"
+        default "tNZTk/ekeZsMnlTGljbKWSZ4nSL7Gw0+d7gMTLVMFws="
+        help
+            Public key of the 2nd remote peer.
 
     config WG_PRESHARED_KEY
         string "Wireguard pre-shared symmetric key"
-        default "0/2H97Sd5EJ9LAAAYUglVjPYv7ihNIm/ziuv6BtSI50="
+        default ""
         help
             Public key of the remote peer.
 
-    config WG_PEER_ADDRESS
+    config WG_PEER_ONE_ADDRESS
         string "Wireguard remote peer address"
-        default "demo.wireguard.com"
+        default "10.0.0.1"
         help
-            Address of the remote peer.
+            Address of the 1st remote peer.
 
-    config WG_PEER_PORT
+    config WG_PEER_TWO_ADDRESS
+        string "Wireguard remote peer address"
+        default "10.0.0.3"
+        help
+            Address of the 2nd remote peer.
+
+    config WG_PEER_ONE_ENDPOINT
+        string "Wireguard remote peer endpoint"
+        default "192.168.178.27"
+        help
+            Address of the 1st remote peer.
+
+    config WG_PEER_TWO_ENDPOINT
+        string "Wireguard remote peer endpoint"
+        default "192.168.178.79"
+        help
+            Address of the 2nd remote peer.
+
+    config WG_PEER_ONE_MASK
+        string "Wireguard remote peer net mask"
+        default "255.255.255.255"
+        help
+            Address of the 1st remote peer netmask
+
+    config WG_PEER_TWO_MASK
+        string "Wireguard remote peer net mask"
+        default "255.255.255.255"
+        help
+            Address of the 2nd remote peer netmask
+
+    config WG_PEER_ONE_PORT
         int "Wireguard remote peer port"
-        default 12912
+        default 53820
+        help
+            Port number of the remote peer.
+
+    config WG_PEER_TWO_PORT
+        int "Wireguard remote peer port"
+        default 43524
         help
             Port number of the remote peer.
 
@@ -76,7 +118,13 @@ menu "Example Configuration"
             keeping a stateful firewall or NAT mapping valid persistently
     config EXAMPLE_PING_ADDRESS
         string "Target IP address or name"
-        default "192.168.4.254"
+        default "10.0.0.1"
+        help
+            Target IP address to send ICMP echo requests.
+
+    config EXAMPLE_FALSE_ADDRESS
+        string "Target IP address or name"
+        default "10.0.2.3"
         help
             Target IP address to send ICMP echo requests.
 endmenu

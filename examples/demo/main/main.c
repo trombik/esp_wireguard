@@ -49,25 +49,35 @@ static EventGroupHandle_t s_wifi_event_group;
 static const char *TAG = "demo";
 static int s_retry_num = 0;
 static wireguard_config_t wg_config = ESP_WIREGUARD_CONFIG_DEFAULT();
+static wireguard_peer_config_t peer_one_config = ESP_WIREGUARD_PEER_CONFIG_DEFAULT();
+static wireguard_peer_config_t peer_two_config = ESP_WIREGUARD_PEER_CONFIG_DEFAULT();
 
-static esp_err_t wireguard_setup(wireguard_ctx_t* ctx)
+static esp_err_t wireguard_setup(wireguard_ctx_t *ctx)
 {
     esp_err_t err = ESP_FAIL;
 
     ESP_LOGI(TAG, "Initializing WireGuard.");
+    // To remove!! These values are pure fictional!
     wg_config.private_key = CONFIG_WG_PRIVATE_KEY;
     wg_config.listen_port = CONFIG_WG_LOCAL_PORT;
-    wg_config.public_key = CONFIG_WG_PEER_PUBLIC_KEY;
-    if (strcmp(CONFIG_WG_PRESHARED_KEY, "") != 0) {
-        wg_config.preshared_key = CONFIG_WG_PRESHARED_KEY;
-    } else {
-        wg_config.preshared_key = NULL;
-    }
-    wg_config.allowed_ip = CONFIG_WG_LOCAL_IP_ADDRESS;
-    wg_config.allowed_ip_mask = CONFIG_WG_LOCAL_IP_NETMASK;
-    wg_config.endpoint = CONFIG_WG_PEER_ADDRESS;
-    wg_config.port = CONFIG_WG_PEER_PORT;
-    wg_config.persistent_keepalive = CONFIG_WG_PERSISTENT_KEEP_ALIVE;
+    wg_config.base_ip = CONFIG_WG_LOCAL_IP_ADDRESS;
+    wg_config.net_mask = CONFIG_WG_LOCAL_IP_NETMASK;
+
+    peer_one_config.public_key = CONFIG_WG_PEER_ONE_PUBLIC_KEY;
+    peer_one_config.preshared_key = NULL;
+    peer_one_config.allowed_ip[0] = CONFIG_WG_PEER_ONE_ADDRESS;
+    peer_one_config.allowed_ip_mask[0] = CONFIG_WG_PEER_TWO_MASK;
+    peer_one_config.endpoint = CONFIG_WG_PEER_ONE_ENDPOINT;
+    peer_one_config.port = CONFIG_WG_PEER_ONE_PORT;
+    peer_one_config.persistent_keepalive = CONFIG_WG_PERSISTENT_KEEP_ALIVE;
+
+    peer_two_config.public_key = CONFIG_WG_PEER_TWO_PUBLIC_KEY;
+    peer_two_config.preshared_key = NULL;
+    peer_two_config.allowed_ip[0] = CONFIG_WG_PEER_TWO_ADDRESS;
+    peer_two_config.allowed_ip_mask[0] = CONFIG_WG_PEER_TWO_MASK;
+    peer_two_config.endpoint = CONFIG_WG_PEER_TWO_ENDPOINT;
+    peer_two_config.port = CONFIG_WG_PEER_TWO_PORT;
+    peer_two_config.persistent_keepalive = CONFIG_WG_PERSISTENT_KEEP_ALIVE;
 
     err = esp_wireguard_init(&wg_config, ctx);
     if (err != ESP_OK) {
@@ -82,6 +92,19 @@ static esp_err_t wireguard_setup(wireguard_ctx_t* ctx)
         goto fail;
     }
 
+    err = esp_wireguard_add_peer(ctx, &peer_one_config);
+    if (err != ESP_OK)
+    {
+        ESP_LOGE(TAG, "esp_wireguard_add_peer: %s", esp_err_to_name(err));
+        goto fail;
+    }
+
+    err = esp_wireguard_add_peer(ctx, &peer_two_config);
+    if (err != ESP_OK)
+    {
+        ESP_LOGE(TAG, "esp_wireguard_add_peer: %s", esp_err_to_name(err));
+        goto fail;
+    }
     err = ESP_OK;
 fail:
     return err;
@@ -311,7 +334,7 @@ static void test_on_ping_end(esp_ping_handle_t hdl, void *args)
     ESP_LOGI(TAG, "%" PRIu32 " packets transmitted, %" PRIu32 " received, time %" PRIu32 "ms", transmitted, received, total_time_ms);
 }
 
-void start_ping()
+void start_ping(const char* ip_addr)
 {
     ESP_LOGI(TAG, "Initializing ping...");
     /* convert URL to IP address */
@@ -320,11 +343,11 @@ void start_ping()
     struct addrinfo hint;
     memset(&hint, 0, sizeof(hint));
     memset(&target_addr, 0, sizeof(target_addr));
-    ESP_ERROR_CHECK(lwip_getaddrinfo(CONFIG_EXAMPLE_PING_ADDRESS, NULL, &hint, &res) == 0 ? ESP_OK : ESP_FAIL);
+    ESP_ERROR_CHECK(lwip_getaddrinfo(ip_addr, NULL, &hint, &res) == 0 ? ESP_OK : ESP_FAIL);
     struct in_addr addr4 = ((struct sockaddr_in *) (res->ai_addr))->sin_addr;
     inet_addr_to_ip4addr(ip_2_ip4(&target_addr), &addr4);
     lwip_freeaddrinfo(res);
-    ESP_LOGI(TAG, "ICMP echo target: %s", CONFIG_EXAMPLE_PING_ADDRESS);
+    ESP_LOGI(TAG, "ICMP echo target: %s", ip_addr);
     esp_ping_config_t ping_config = ESP_PING_DEFAULT_CONFIG();
     ping_config.target_addr = target_addr;          // target IP address
     ping_config.count = ESP_PING_COUNT_INFINITE;    // ping in infinite mode, esp_ping_stop can stop it
@@ -386,36 +409,56 @@ void app_main(void)
 
     while (1) {
         vTaskDelay(1000 / portTICK_PERIOD_MS);
-        err = esp_wireguardif_peer_is_up(&ctx);
+        err = esp_wireguardif_peer_is_up(&ctx, peer_one_config.public_key);
         if (err == ESP_OK) {
-            ESP_LOGI(TAG, "Peer is up");
+            ESP_LOGI(TAG, "Peer 1 is up");
             break;
         } else {
-            ESP_LOGI(TAG, "Peer is down");
+            ESP_LOGI(TAG, "Peer 1 is down");
         }
     }
-    start_ping();
-
+    start_ping(CONFIG_WG_PEER_ONE_ADDRESS);
     while (1) {
-        vTaskDelay(1000 * 10 / portTICK_PERIOD_MS);
-        ESP_LOGI(TAG, "Disconnecting.");
-        esp_wireguard_disconnect(&ctx);
-        ESP_LOGI(TAG, "Disconnected.");
-
-        vTaskDelay(1000 * 10 / portTICK_PERIOD_MS);
-        ESP_LOGI(TAG, "Connecting.");
-        err = esp_wireguard_connect(&ctx);
-        if (err != ESP_OK) {
-            ESP_LOGE(TAG, "esp_wireguard_connect: %s", esp_err_to_name(err));
-            goto fail;
+        vTaskDelay(1000 / portTICK_PERIOD_MS);
+        err = esp_wireguardif_peer_is_up(&ctx, peer_two_config.public_key);
+        if (err == ESP_OK) {
+            ESP_LOGI(TAG, "Peer 2 is up");
+            break;
+        } else {
+            ESP_LOGI(TAG, "Peer 2 is down");
         }
-        while (esp_wireguardif_peer_is_up(&ctx) != ESP_OK) {
-            vTaskDelay(1000 / portTICK_PERIOD_MS);
-        }
-        ESP_LOGI(TAG, "Peer is up");
-        esp_wireguard_set_default(&ctx);
     }
+    start_ping(CONFIG_WG_PEER_TWO_ADDRESS);
 
+    vTaskDelay(1000 * 10 / portTICK_PERIOD_MS);
+    ESP_LOGI(TAG, "Disconnecting peer 1");
+    esp_wireguard_remove_peer(&ctx, peer_one_config.public_key);
+    ESP_LOGI(TAG, "Disconnected peer 1");
+
+    vTaskDelay(1000 * 10 / portTICK_PERIOD_MS);
+    ESP_LOGI(TAG, "Connecting peer 1");
+    err = esp_wireguard_add_peer(&ctx, &peer_one_config);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "esp_wireguard_connect: %s", esp_err_to_name(err));
+        goto fail;
+    }
+    ESP_LOGI(TAG, "Peer 1 is up");
+    vTaskDelay(1000 * 10 / portTICK_PERIOD_MS);
+
+    ESP_LOGI(TAG, "Disconnecting peer 2");
+    esp_wireguard_remove_peer(&ctx, peer_two_config.public_key);
+    ESP_LOGI(TAG, "Disconnected peer 2");
+
+    vTaskDelay(1000 * 10 / portTICK_PERIOD_MS);
+    peer_one_config.allowed_ip[0] = CONFIG_EXAMPLE_FALSE_ADDRESS;
+    esp_wireguard_update_peer(&ctx, &peer_one_config);
+    ESP_LOGI(TAG, "Peer 1 updated!");
+    vTaskDelay(1000 * 10 / portTICK_PERIOD_MS);
+
+    ESP_LOGI(TAG, "Everything works well");
+    while (1) {
+        vTaskDelay(1000 / portTICK_PERIOD_MS);
+    }
 fail:
     ESP_LOGE(TAG, "Halting due to error");
     while (1) {

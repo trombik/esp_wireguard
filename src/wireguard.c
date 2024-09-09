@@ -86,6 +86,22 @@ struct wireguard_peer *peer_alloc(struct wireguard_device *device) {
 	return result;
 }
 
+struct wireguard_peer *peer_lookup_by_encoded_pubkey(struct wireguard_device *device, uint8_t *encoded_key) {
+	struct wireguard_peer *result = NULL;
+	struct wireguard_peer *tmp;
+	int x;
+	for (x=0; x < WIREGUARD_MAX_PEERS; x++) {
+		tmp = &device->peers[x];
+		if (tmp->valid) {
+			if (memcmp(tmp->encoded_public_key, encoded_key, WIREGUARD_ENCODED_PUBLIC_KEY_LEN) == 0) {
+				result = tmp;
+				break;
+			}
+		}
+	}
+	return result;
+}
+
 struct wireguard_peer *peer_lookup_by_pubkey(struct wireguard_device *device, uint8_t *public_key) {
 	struct wireguard_peer *result = NULL;
 	struct wireguard_peer *tmp;

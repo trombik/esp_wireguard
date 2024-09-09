@@ -93,10 +93,10 @@ static err_t wireguardif_peer_output(struct netif *netif, struct pbuf *q, struct
 	struct wireguard_device *device = (struct wireguard_device *)netif->state;
 	// Send to last know port, not the connect port
 	//TODO: Support DSCP and ECN - lwip requires this set on PCB globally, not per packet
-	// return udp_sendto_if(device->udp_pcb, q, &peer->ip, peer->port, device->underlying_netif);
+	return udp_sendto_if(device->udp_pcb, q, &peer->ip, peer->port, device->underlying_netif);
 
 	// Send via DERP
-	return derp_send_packet(device, peer, q);
+	// return derp_send_packet(device, peer, q);
 }
 
 static err_t wireguardif_device_output(struct wireguard_device *device, struct pbuf *q, const ip_addr_t *ipaddr, u16_t port) {
@@ -236,31 +236,19 @@ static void wireguardif_process_response_message(struct wireguard_device *device
 	}
 }
 
-static bool peer_add_ip(struct wireguard_peer *peer, ip_addr_t ip, ip_addr_t mask) {
+static bool peer_add_ip(struct wireguard_peer *peer, ip_addr_t ip[WIREGUARD_MAX_SRC_IPS], ip_addr_t mask[WIREGUARD_MAX_SRC_IPS]) {
 	bool result = false;
 	struct wireguard_allowed_ip *allowed;
 	int x;
-	// Look for existing match first
-	for (x=0; x < WIREGUARD_MAX_SRC_IPS; x++) {
-		allowed = &peer->allowed_source_ips[x];
-		if ((allowed->valid) && ip_addr_cmp(&allowed->ip, &ip) && ip_addr_cmp(&allowed->mask, &mask)) {
-			result = true;
-			break;
-		}
-	}
-	if (!result) {
-		// Look for a free slot
 		for (x=0; x < WIREGUARD_MAX_SRC_IPS; x++) {
-			allowed = &peer->allowed_source_ips[x];
-			if (!allowed->valid) {
+			if (!ip_addr_isany(&ip[x])) {
+				allowed = &peer->allowed_source_ips[x];
 				allowed->valid = true;
-				allowed->ip = ip;
-				allowed->mask = mask;
+				allowed->ip = ip[x];
+				allowed->mask = mask[x];
 				result = true;
-				break;
 			}
 		}
-	}
 	return result;
 }
 
@@ -271,8 +259,8 @@ static void wireguardif_process_data_message(struct wireguard_device *device, st
 	size_t src_len;
 	struct pbuf *pbuf;
 	struct ip_hdr *iphdr;
-	ip_addr_t dest;
-	bool dest_ok = false;
+	ip_addr_t hdr_src;
+	bool src_ok = false;
 	int x;
 	uint32_t now;
 	uint16_t header_len = 0xFFFF;
@@ -328,11 +316,11 @@ static void wireguardif_process_data_message(struct wireguard_device *device, st
 							// Also check packet length!
 #if LWIP_IPV4
 							if (IPH_V(iphdr) == 4) {
-								ip_addr_copy_from_ip4(dest, iphdr->dest);
+								ip_addr_copy_from_ip4(hdr_src, iphdr->src);
 								for (x=0; x < WIREGUARD_MAX_SRC_IPS; x++) {
 									if (peer->allowed_source_ips[x].valid) {
-										if (ip_addr_netcmp(&dest, &peer->allowed_source_ips[x].ip, ip_2_ip4(&peer->allowed_source_ips[x].mask))) {
-											dest_ok = true;
+										if (ip_addr_netcmp(&hdr_src, &peer->allowed_source_ips[x].ip, ip_2_ip4(&peer->allowed_source_ips[x].mask))) {
+											src_ok = true;
 											header_len = PP_NTOHS(IPH_LEN(iphdr));
 											break;
 										}
@@ -344,13 +332,13 @@ static void wireguardif_process_data_message(struct wireguard_device *device, st
 							if (IPH_V(iphdr) == 6) {
 								// TODO: IPV6 support for route filtering
 								header_len = PP_NTOHS(IPH_LEN(iphdr));
-								dest_ok = true;
+								src_ok = true;
 							}
 #endif /* LWIP_IPV6 */
 							if (header_len <= pbuf->tot_len) {
 
 								// 5. If the plaintext packet has not been dropped, it is inserted into the receive queue of the wg0 interface.
-								if (dest_ok) {
+								if (src_ok) {
 									// Send packet to be process by LWIP
 									ip_input(pbuf, device->netif);
 									// pbuf is owned by IP layer now
@@ -625,7 +613,7 @@ void wireguardif_network_rx(void *arg, struct udp_pcb *pcb, struct pbuf *p, cons
 			break;
 	}
 	// Release data!
-	//pbuf_free(p); -> DERP module will handle memory freeing for this packet
+	pbuf_free(p); // -> DERP module will handle memory freeing for this packet
 }
 
 static err_t wireguard_start_handshake(struct netif *netif, struct wireguard_peer *peer) {
@@ -654,7 +642,7 @@ static err_t wireguard_start_handshake(struct netif *netif, struct wireguard_pee
 	return result;
 }
 
-static err_t wireguardif_lookup_peer(struct netif *netif, u8_t peer_index, struct wireguard_peer **out) {
+static err_t wireguardif_lookup_peer(struct netif *netif, uint8_t* key, struct wireguard_peer **out, enum PEER_LOOKUP_TYPE lookup_type) {
 	LWIP_ASSERT("netif != NULL", (netif != NULL));
 	LWIP_ASSERT("state != NULL", (netif->state != NULL));
 	struct wireguard_device *device = (struct wireguard_device *)netif->state;
@@ -662,7 +650,17 @@ static err_t wireguardif_lookup_peer(struct netif *netif, u8_t peer_index, struc
 	err_t result;
 
 	if (device->valid) {
-		peer = peer_lookup_by_peer_index(device, peer_index);
+		switch (lookup_type)
+		{
+		case LOOKUP_BY_PUBKEY:
+			peer = peer_lookup_by_encoded_pubkey(device, key);
+			break;
+		case LOOKUP_BY_IDX:
+			peer = peer_lookup_by_peer_index(device, *key);
+			break;
+		default:
+			break;
+		}
 		if (peer) {
 			result = ERR_OK;
 		} else {
@@ -677,7 +675,7 @@ static err_t wireguardif_lookup_peer(struct netif *netif, u8_t peer_index, struc
 
 err_t wireguardif_connect(struct netif *netif, u8_t peer_index) {
 	struct wireguard_peer *peer;
-	err_t result = wireguardif_lookup_peer(netif, peer_index, &peer);
+	err_t result = wireguardif_lookup_peer(netif, &peer_index, &peer, LOOKUP_BY_IDX);
 	if (result == ERR_OK) {
 		// Check that a valid connect ip and port have been set
 		if (!ip_addr_isany(&peer->connect_ip) && (peer->connect_port > 0)) {
@@ -693,9 +691,9 @@ err_t wireguardif_connect(struct netif *netif, u8_t peer_index) {
 	return result;
 }
 
-err_t wireguardif_disconnect(struct netif *netif, u8_t peer_index) {
+err_t wireguardif_disconnect(struct netif *netif, uint8_t* peer_key, enum PEER_LOOKUP_TYPE key_type) {
 	struct wireguard_peer *peer;
-	err_t result = wireguardif_lookup_peer(netif, peer_index, &peer);
+	err_t result = wireguardif_lookup_peer(netif, peer_key, &peer, key_type);
 	if (result == ERR_OK) {
 		// Set the flag that we want to try connecting
 		peer->active = false;
@@ -708,28 +706,22 @@ err_t wireguardif_disconnect(struct netif *netif, u8_t peer_index) {
 	return result;
 }
 
-err_t wireguardif_peer_is_up(struct netif *netif, u8_t peer_index, ip_addr_t *current_ip, u16_t *current_port) {
+err_t wireguardif_peer_is_up(struct netif *netif, uint8_t* pubkey) {
 	struct wireguard_peer *peer;
-	err_t result = wireguardif_lookup_peer(netif, peer_index, &peer);
+	err_t result = wireguardif_lookup_peer(netif, pubkey, &peer, LOOKUP_BY_PUBKEY);
 	if (result == ERR_OK) {
 		if ((peer->curr_keypair.valid) || (peer->prev_keypair.valid)) {
 			result = ERR_OK;
 		} else {
 			result = ERR_CONN;
 		}
-		if (current_ip) {
-			*current_ip = peer->ip;
-		}
-		if (current_port) {
-			*current_port = peer->port;
-		}
 	}
 	return result;
 }
 
-err_t wireguardif_remove_peer(struct netif *netif, u8_t peer_index) {
+err_t wireguardif_remove_peer(struct netif *netif, uint8_t* key,  enum PEER_LOOKUP_TYPE key_type) {
 	struct wireguard_peer *peer;
-	err_t result = wireguardif_lookup_peer(netif, peer_index, &peer);
+	err_t result = wireguardif_lookup_peer(netif, key, &peer, key_type);
 	if (result == ERR_OK) {
 		crypto_zero(peer, sizeof(struct wireguard_peer));
 		peer->valid = false;
@@ -738,15 +730,26 @@ err_t wireguardif_remove_peer(struct netif *netif, u8_t peer_index) {
 	return result;
 }
 
-err_t wireguardif_update_endpoint(struct netif *netif, u8_t peer_index, const ip_addr_t *ip, u16_t port) {
+err_t wireguardif_update_endpoint(struct netif *netif, uint8_t* pubkey, const ip_addr_t *ip, u16_t port) {
 	struct wireguard_peer *peer;
-	err_t result = wireguardif_lookup_peer(netif, peer_index, &peer);
+	err_t result = wireguardif_lookup_peer(netif, pubkey, &peer, LOOKUP_BY_PUBKEY);
 	if (result == ERR_OK) {
 		peer->connect_ip = *ip;
 		peer->connect_port = port;
 		result = ERR_OK;
 	}
 	return result;
+}
+
+
+void copy_wireguardif_peer_cfg(struct wireguard_peer *old_cfg, struct wireguardif_peer *new_cfg) {
+	old_cfg->connect_ip = new_cfg->endpoint_ip;
+	old_cfg->connect_port = new_cfg->endport_port;
+	old_cfg->ip = old_cfg->connect_ip;
+	old_cfg->port = old_cfg->connect_port;
+	old_cfg->keepalive_interval = new_cfg->keep_alive;
+	peer_add_ip(old_cfg, new_cfg->allowed_ip, new_cfg->allowed_mask);
+	memcpy(old_cfg->greatest_timestamp, new_cfg->greatest_timestamp, sizeof(old_cfg->greatest_timestamp));
 }
 
 
@@ -781,6 +784,7 @@ err_t wireguardif_add_peer(struct netif *netif, struct wireguardif_peer *p, u8_t
 					peer->keepalive_interval = p->keep_alive;
 					peer_add_ip(peer, p->allowed_ip, p->allowed_mask);
 					memcpy(peer->greatest_timestamp, p->greatest_timestamp, sizeof(peer->greatest_timestamp));
+					memcpy(peer->encoded_public_key, p->public_key, WIREGUARD_ENCODED_PUBLIC_KEY_LEN);
 
 					result = ERR_OK;
 				} else {
@@ -806,6 +810,25 @@ err_t wireguardif_add_peer(struct netif *netif, struct wireguardif_peer *p, u8_t
 			*peer_index = WIREGUARDIF_INVALID_INDEX;
 		}
 	}
+	return result;
+}
+
+err_t wireguardif_update_peer(struct netif *netif, struct wireguardif_peer *new_peer_cfg, uint8_t* public_key) {
+	LWIP_ASSERT("netif != NULL", (netif != NULL));
+	LWIP_ASSERT("state != NULL", (netif->state != NULL));
+	LWIP_ASSERT("p != NULL", (new_peer_cfg != NULL));
+	struct wireguard_peer *peer = NULL;
+	err_t result;
+
+	struct wireguard_device *device = (struct wireguard_device *)netif->state;
+	peer = peer_lookup_by_encoded_pubkey(device, public_key);
+	if (peer) {
+		copy_wireguardif_peer_cfg(peer, new_peer_cfg);
+		result = ERR_OK;
+	} else {
+		result = ERR_ARG;
+	}
+
 	return result;
 }
 
@@ -861,7 +884,7 @@ static void wireguardif_tmr(void *arg) {
 	// Reschedule this timer
 	sys_timeout(WIREGUARDIF_TIMER_MSECS, wireguardif_tmr, device);
 
-	derp_tick(device);
+	// derp_tick(device);
 
 	// Check periodic things
 	bool link_up = false;
@@ -1030,8 +1053,10 @@ void wireguardif_peer_init(struct wireguardif_peer *peer) {
 	ip_addr_set_any(false, &peer->endpoint_ip);
 	peer->endport_port = WIREGUARDIF_DEFAULT_PORT;
 	peer->keep_alive = 0;
-	ip_addr_set_any(false, &peer->allowed_ip);
-	ip_addr_set_any(false, &peer->allowed_mask);
+	for (int i = 0; i < CONFIG_WIREGUARD_MAX_SRC_IPS; i++ ) {
+		ip_addr_set_any(false, &peer->allowed_ip[i]);
+		ip_addr_set_any(false, &peer->allowed_mask[i]);
+	}
 	memset(peer->greatest_timestamp, 0, sizeof(peer->greatest_timestamp));
 	peer->preshared_key = NULL;
 }

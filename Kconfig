@@ -11,7 +11,7 @@ endchoice
 
 config WIREGUARD_MAX_PEERS
     int "Max number of peers"
-    default 1
+    default 2
 
 config WIREGUARD_MAX_SRC_IPS
 	int "Max number of SRC IP addresses"
