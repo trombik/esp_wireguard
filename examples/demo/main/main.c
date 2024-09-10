@@ -201,7 +201,7 @@ fail:
 }
 #endif // CONFIG_WIREGUARD_ESP_TCPIP_ADAPTER
 
-#ifdef CONFIG_WIREGUARD_ESP_NETIF
+#ifdef CONFIG_WIREGUARD_ESP_NETIF_WIFI
 static esp_err_t wifi_init_netif(void)
 {
     esp_err_t err = ESP_FAIL;
@@ -287,14 +287,14 @@ static esp_err_t wifi_init_netif(void)
 fail:
     return err;
 }
-#endif // CONFIG_WIREGUARD_ESP_NETIF
+#endif // CONFIG_WIREGUARD_ESP_NETIF_WIFI
 
 static esp_err_t wifi_init_sta(void)
 {
 #if defined(CONFIG_WIREGUARD_ESP_TCPIP_ADAPTER)
     return wifi_init_tcpip_adaptor();
 #endif
-#if defined(CONFIG_WIREGUARD_ESP_NETIF)
+#if defined(CONFIG_WIREGUARD_ESP_NETIF_WIFI)
     return wifi_init_netif();
 #endif
 }

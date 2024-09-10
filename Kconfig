@@ -2,11 +2,13 @@ menu "WireGuard"
 
 choice WIREGUARD_ESP_ADAPTER_SELECTION
     prompt "TCP/IP adapter to use"
-    default WIREGUARD_ESP_NETIF
+    default WIREGUARD_ESP_NETIF_WIFI
     config WIREGUARD_ESP_TCPIP_ADAPTER
         bool "TCP/IP Adapter (pre esp-idf v4.1, ESP8266 RTOS SDK)"
-    config WIREGUARD_ESP_NETIF
+    config WIREGUARD_ESP_NETIF_WIFI
         bool "ESP-NETIF"
+    config WIREGUARD_ESP_NETIF_ETHERNET
+        bool "ESP-NETIF ETHERNET"
 endchoice
 
 config WIREGUARD_MAX_PEERS

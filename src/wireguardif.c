@@ -45,7 +45,7 @@
 #include <sys/socket.h>
 #include <esp_log.h>
 #include <esp_err.h>
-#if defined(CONFIG_WIREGUARD_ESP_NETIF)
+#if defined(CONFIG_WIREGUARD_ESP_NETIF_WIFI) || defined(CONFIG_WIREGUARD_ESP_NETIF_ETHERNET)
 #include <esp_netif.h>
 #endif
 #if defined(CONFIG_WIREGUARD_ESP_TCPIP_ADAPTER)
@@ -936,7 +936,7 @@ err_t wireguardif_init(struct netif *netif) {
 	uint8_t private_key[WIREGUARD_PRIVATE_KEY_LEN];
 	size_t private_key_len = sizeof(private_key);
 
-#if defined(CONFIG_WIREGUARD_ESP_NETIF)
+#if defined(CONFIG_WIREGUARD_ESP_NETIF_WIFI)
 	struct netif* underlying_netif = NULL;
 	char lwip_netif_name[8] = {0,};
 
@@ -957,6 +957,23 @@ err_t wireguardif_init(struct netif *netif) {
 	err = tcpip_adapter_get_netif(TCPIP_ADAPTER_IF_STA, &underlying_netif);
 	if (err != ESP_OK) {
 		ESP_LOGE(TAG, "tcpip_adapter_get_netif: %s", esp_err_to_name(err));
+		result = ERR_IF;
+		goto fail;
+	}
+#elif defined(CONFIG_WIREGUARD_ESP_NETIF_ETHERNET)
+	struct netif* underlying_netif = NULL;
+	char lwip_netif_name[8] = {0,};
+
+	ESP_LOGI(TAG,"Trying to find Ethernet interface with ID: ETH_DEF");
+	err = esp_netif_get_netif_impl_name(esp_netif_get_handle_from_ifkey("ETH_DEF"), lwip_netif_name);
+	if (err != ESP_OK) {
+		ESP_LOGE(TAG, "esp_netif_get_netif_impl_name: %s", esp_err_to_name(err));
+		result = ERR_IF;
+		goto fail;
+	}
+	underlying_netif = netif_find(lwip_netif_name);
+	if (!underlying_netif) {
+		ESP_LOGE(TAG, "netif_find: cannot find ETH_DEF");
 		result = ERR_IF;
 		goto fail;
 	}
