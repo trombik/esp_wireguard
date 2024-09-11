@@ -113,7 +113,7 @@ static void read_from_interface_worker(void *arg) {
 	struct wireguard_device *dev = (struct wireguard_device *)arg;
 	uint32_t packet_ptr;
 
-	ESP_LOGE(TAG, "Read from interface worker starting");
+	ESP_LOGI(TAG, "Read from interface worker starting");
 
 	for (;;) {
 		xTaskNotifyWaitIndexed(0, ULONG_MAX, ULONG_MAX, &packet_ptr, portMAX_DELAY);
@@ -247,7 +247,7 @@ static void derp_transmit_task(void *arg) {
 	    "Host: %s\r\n"
         "Connection: Upgrade\r\n"
         "Upgrade: WebSocket\r\n"
-        "User-Agent: esp32/v1.0.0 esp\r\n\r\n",
+        "User-Agent: telio/esp32\r\n\r\n",
         dev->derp.endpoint.addr);
 	err = esp_tls_conn_write(dev->derp.tls, http_req, strlen(http_req));
 	if (err < 0) {

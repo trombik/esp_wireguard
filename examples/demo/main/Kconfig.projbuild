@@ -2,13 +2,13 @@ menu "Example Configuration"
 
     config ESP_WIFI_SSID
         string "WiFi SSID"
-        default "FRITZ!Box 6820 XO"
+        default "myssid"
         help
             SSID (network name) for the example to connect to.
 
     config ESP_WIFI_PASSWORD
         string "WiFi Password"
-        default "36285371065867674404"
+        default "mypassword"
         help
             WiFi password (WPA or WPA2) for the example to use.
 
@@ -21,13 +21,13 @@ menu "Example Configuration"
 
     config WG_PRIVATE_KEY
         string "Wireguard Private Key"
-        default "IDMj7MCa84aqdP2Co9F8FumSjk2lWfnixdVk3oR6zXI="
+        default "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
         help
             Private key of the WireGuard device.
 
     config WG_LOCAL_IP_ADDRESS
         string "Wireguard local IP address"
-        default "100.120.100.31"
+        default "10.0.0.2"
         help
             Local IP address of the WireGuard device.
 
@@ -45,13 +45,13 @@ menu "Example Configuration"
 
     config WG_PEER_ONE_PUBLIC_KEY
         string "Wireguard remote peer public key"
-        default "N5oM/P2/y3pWeMYdBj4s1LsI/kV5c/S+7aMkYUNdD08="
+        default "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
         help
             Public key of the 1st remote peer.
 
     config WG_PEER_TWO_PUBLIC_KEY
         string "Wireguard remote peer public key"
-        default "tNZTk/ekeZsMnlTGljbKWSZ4nSL7Gw0+d7gMTLVMFws="
+        default "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
         help
             Public key of the 2nd remote peer.
 
@@ -63,7 +63,7 @@ menu "Example Configuration"
 
     config WG_PEER_ONE_ADDRESS
         string "Wireguard remote peer address"
-        default "100.67.191.124"
+        default "10.0.0.1"
         help
             Address of the 1st remote peer.
 

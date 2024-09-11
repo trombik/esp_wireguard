@@ -1045,6 +1045,14 @@ fail:
 	return result;
 }
 
+conn_state_t wireguardif_get_derp_conn_status(struct netif *netif) {
+	if (!netif) {
+		return CONN_STATE_INPUT_ERROR;
+	}
+	struct wireguard_device *device = (struct wireguard_device *)netif->state;
+	return device->derp.conn_state;
+}
+
 void wireguardif_peer_init(struct wireguardif_peer *peer) {
 	LWIP_ASSERT("peer != NULL", (peer != NULL));
 	memset(peer, 0, sizeof(struct wireguardif_peer));
