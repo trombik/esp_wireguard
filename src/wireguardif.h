@@ -65,14 +65,10 @@ struct wireguardif_peer {
 	const uint8_t *preshared_key;
 	// tai64n of largest timestamp we have seen during handshake to avoid replays
 	uint8_t greatest_timestamp[12];
-
 	// Allowed ip/netmask (can add additional later but at least one is required)
 	ip_addr_t allowed_ip[CONFIG_WIREGUARD_MAX_SRC_IPS];
 	ip_addr_t allowed_mask[CONFIG_WIREGUARD_MAX_SRC_IPS];
 
-	// End-point details (may be blank)
-	ip_addr_t endpoint_ip;
-	u16_t endport_port;
 	u16_t keep_alive;
 };
 
@@ -100,14 +96,10 @@ enum PEER_LOOKUP_TYPE{
  * peer.allowed_ip = allowed_ip;
  * peer.allowed_mask = allowed_mask;
  *
- * // If you want to enable output connection
- * peer.endpoint_ip = peer_ip;
- * peer.endport_port = 12345;
- *
  * uint8_t wireguard_peer_index;
  * wireguardif_add_peer(netif, &peer, &wireguard_peer_index);
  *
- * if ((wireguard_peer_index != WIREGUARDIF_INVALID_INDEX) && !ip_addr_isany(&peer.endpoint_ip)) {
+ * if ((wireguard_peer_index != WIREGUARDIF_INVALID_INDEX)) {
  *   // Start outbound connection to peer
  *   wireguardif_connect(wg_net, wireguard_peer_index);
  * }
@@ -126,9 +118,6 @@ err_t wireguardif_add_peer(struct netif *netif, struct wireguardif_peer *peer, u
 
 // Remove the given peer from the network interface
 err_t wireguardif_remove_peer(struct netif *netif, uint8_t* key, enum PEER_LOOKUP_TYPE key_type);
-
-// Update the "connect" IP of the given peer
-err_t wireguardif_update_endpoint(struct netif *netif, uint8_t* pubkey, const ip_addr_t *ip, u16_t port);
 
 // Try and connect to the given peer
 err_t wireguardif_connect(struct netif *netif, u8_t peer_index);

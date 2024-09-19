@@ -46,7 +46,7 @@ static EventGroupHandle_t s_wifi_event_group;
 #define WIFI_CONNECTED_BIT BIT0
 #define WIFI_FAIL_BIT      BIT1
 
-static const char *TAG = "demo";
+static const char *TAG = "DEMO";
 static int s_retry_num = 0;
 static wireguard_config_t wg_config = ESP_WIREGUARD_CONFIG_DEFAULT();
 static wireguard_peer_config_t peer_one_config = ESP_WIREGUARD_PEER_CONFIG_DEFAULT();
@@ -67,16 +67,12 @@ static esp_err_t wireguard_setup(wireguard_ctx_t *ctx)
     peer_one_config.preshared_key = NULL;
     peer_one_config.allowed_ip[0] = CONFIG_WG_PEER_ONE_ADDRESS;
     peer_one_config.allowed_ip_mask[0] = CONFIG_WG_PEER_TWO_MASK;
-    peer_one_config.endpoint = CONFIG_WG_PEER_ONE_ENDPOINT;
-    peer_one_config.port = CONFIG_WG_PEER_ONE_PORT;
     peer_one_config.persistent_keepalive = CONFIG_WG_PERSISTENT_KEEP_ALIVE;
 
     peer_two_config.public_key = CONFIG_WG_PEER_TWO_PUBLIC_KEY;
     peer_two_config.preshared_key = NULL;
     peer_two_config.allowed_ip[0] = CONFIG_WG_PEER_TWO_ADDRESS;
     peer_two_config.allowed_ip_mask[0] = CONFIG_WG_PEER_TWO_MASK;
-    peer_two_config.endpoint = CONFIG_WG_PEER_TWO_ENDPOINT;
-    peer_two_config.port = CONFIG_WG_PEER_TWO_PORT;
     peer_two_config.persistent_keepalive = CONFIG_WG_PERSISTENT_KEEP_ALIVE;
 
     err = esp_wireguard_init(&wg_config, ctx);
@@ -420,6 +416,7 @@ void app_main(void)
         }
     }
     start_ping(CONFIG_WG_PEER_ONE_ADDRESS);
+
     while (1) {
         vTaskDelay(1000 / portTICK_PERIOD_MS);
         err = esp_wireguardif_peer_is_up(&ctx, peer_two_config.public_key);

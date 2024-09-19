@@ -57,8 +57,6 @@ wg_config.listen_port = CONFIG_WG_LOCAL_PORT;
 wg_config.public_key = CONFIG_WG_PEER_PUBLIC_KEY;
 wg_config.allowed_ip = CONFIG_WG_LOCAL_IP_ADDRESS;
 wg_config.allowed_ip_mask = CONFIG_WG_LOCAL_IP_NETMASK;
-wg_config.endpoint = CONFIG_WG_PEER_ADDRESS;
-wg_config.port = CONFIG_WG_PEER_PORT;
 
 /* If the device is behind NAT or stateful firewall, set persistent_keepalive.
    persistent_keepalive is disabled by default */

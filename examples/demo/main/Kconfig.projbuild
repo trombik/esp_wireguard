@@ -73,18 +73,6 @@ menu "Example Configuration"
         help
             Address of the 2nd remote peer.
 
-    config WG_PEER_ONE_ENDPOINT
-        string "Wireguard remote peer endpoint"
-        default "192.168.178.27"
-        help
-            Address of the 1st remote peer.
-
-    config WG_PEER_TWO_ENDPOINT
-        string "Wireguard remote peer endpoint"
-        default "192.168.178.79"
-        help
-            Address of the 2nd remote peer.
-
     config WG_PEER_ONE_MASK
         string "Wireguard remote peer net mask"
         default "255.255.255.255"
@@ -97,18 +85,6 @@ menu "Example Configuration"
         help
             Address of the 2nd remote peer netmask
 
-    config WG_PEER_ONE_PORT
-        int "Wireguard remote peer port"
-        default 51820
-        help
-            Port number of the remote peer.
-
-    config WG_PEER_TWO_PORT
-        int "Wireguard remote peer port"
-        default 43524
-        help
-            Port number of the remote peer.
-
     config WG_PERSISTENT_KEEP_ALIVE
         int "Interval to send an authenticated empty packet"
         default 0
@@ -116,11 +92,6 @@ menu "Example Configuration"
             A seconds interval, between 1 and 65535 inclusive, of how often to
             send an authenticated empty packet to the peer for the purpose of
             keeping a stateful firewall or NAT mapping valid persistently
-    config EXAMPLE_PING_ADDRESS
-        string "Target IP address or name"
-        default "10.0.0.1"
-        help
-            Target IP address to send ICMP echo requests.
 
     config EXAMPLE_FALSE_ADDRESS
         string "Target IP address or name"

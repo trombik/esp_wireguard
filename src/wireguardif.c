@@ -61,10 +61,6 @@
 
 #define TAG "wireguardif"
 
-static void update_peer_addr(struct wireguard_peer *peer, const ip_addr_t *addr, u16_t port) {
-	peer->ip = *addr;
-	peer->port = port;
-}
 
 static struct wireguard_peer *peer_lookup_by_allowed_ip(struct wireguard_device *device, const ip_addr_t *ipaddr) {
 	struct wireguard_peer *result = NULL;
@@ -224,11 +220,8 @@ static void wireguardif_process_response_message(struct wireguard_device *device
 	if (wireguard_process_handshake_response(device, peer, response)) {
 		// Packet is good
 		// Update the peer location
-		update_peer_addr(peer, addr, port);
-
 		wireguard_start_session(peer, true);
 		wireguardif_send_keepalive(device, peer);
-
 		// Set the IF-UP flag on netif
 		netif_set_link_up(device->netif);
 	} else {
@@ -239,16 +232,17 @@ static void wireguardif_process_response_message(struct wireguard_device *device
 static bool peer_add_ip(struct wireguard_peer *peer, ip_addr_t ip[WIREGUARD_MAX_SRC_IPS], ip_addr_t mask[WIREGUARD_MAX_SRC_IPS]) {
 	bool result = false;
 	struct wireguard_allowed_ip *allowed;
-	int x;
-		for (x=0; x < WIREGUARD_MAX_SRC_IPS; x++) {
-			if (!ip_addr_isany(&ip[x])) {
-				allowed = &peer->allowed_source_ips[x];
-				allowed->valid = true;
-				allowed->ip = ip[x];
-				allowed->mask = mask[x];
-				result = true;
-			}
+
+	for (int x = 0; x < WIREGUARD_MAX_SRC_IPS; x++) {
+		if (!ip_addr_isany(&ip[x])) {
+			allowed = &peer->allowed_source_ips[x];
+			allowed->valid = true;
+			allowed->ip = ip[x];
+			allowed->mask = mask[x];
+			result = true;
 		}
+	}
+
 	return result;
 }
 
@@ -288,8 +282,6 @@ static void wireguardif_process_data_message(struct wireguard_device *device, st
 				if (wireguard_decrypt_packet(pbuf->payload, src, src_len, nonce, keypair)) {
 
 					// 3. Since the packet has authenticated correctly, the source IP of the outer UDP/IP packet is used to update the endpoint for peer TrMv...WXX0.
-					// Update the peer location
-					update_peer_addr(peer, addr, port);
 
 					now = wireguard_sys_now();
 					keypair->last_rx = now;
@@ -563,9 +555,6 @@ void wireguardif_network_rx(void *arg, struct udp_pcb *pcb, struct pbuf *p, cons
 
 				peer = wireguard_process_initiation_message(device, msg_initiation);
 				if (peer) {
-					// Update the peer location
-					update_peer_addr(peer, addr, port);
-
 					// Send back a handshake response
 					wireguardif_send_handshake_response(device, peer);
 				}
@@ -590,12 +579,7 @@ void wireguardif_network_rx(void *arg, struct udp_pcb *pcb, struct pbuf *p, cons
 			msg_cookie = (struct message_cookie_reply *)data;
 			peer = peer_lookup_by_handshake(device, msg_cookie->receiver);
 			if (peer) {
-				if (wireguard_process_cookie_message(device, peer, msg_cookie)) {
-					// Update the peer location
-					update_peer_addr(peer, addr, port);
-
-					// Don't send anything out - we stay quiet until the next initiation message
-				}
+				wireguard_process_cookie_message(device, peer, msg_cookie);
 			}
 			break;
 
@@ -676,17 +660,10 @@ static err_t wireguardif_lookup_peer(struct netif *netif, uint8_t* key, struct w
 err_t wireguardif_connect(struct netif *netif, u8_t peer_index) {
 	struct wireguard_peer *peer;
 	err_t result = wireguardif_lookup_peer(netif, &peer_index, &peer, LOOKUP_BY_IDX);
+
 	if (result == ERR_OK) {
-		// Check that a valid connect ip and port have been set
-		if (!ip_addr_isany(&peer->connect_ip) && (peer->connect_port > 0)) {
-			// Set the flag that we want to try connecting
-			peer->active = true;
-			peer->ip = peer->connect_ip;
-			peer->port = peer->connect_port;
-			result = ERR_OK;
-		} else {
-			result = ERR_ARG;
-		}
+		peer->active = true;
+		result = ERR_OK;
 	}
 	return result;
 }
@@ -730,23 +707,8 @@ err_t wireguardif_remove_peer(struct netif *netif, uint8_t* key,  enum PEER_LOOK
 	return result;
 }
 
-err_t wireguardif_update_endpoint(struct netif *netif, uint8_t* pubkey, const ip_addr_t *ip, u16_t port) {
-	struct wireguard_peer *peer;
-	err_t result = wireguardif_lookup_peer(netif, pubkey, &peer, LOOKUP_BY_PUBKEY);
-	if (result == ERR_OK) {
-		peer->connect_ip = *ip;
-		peer->connect_port = port;
-		result = ERR_OK;
-	}
-	return result;
-}
-
 
 void copy_wireguardif_peer_cfg(struct wireguard_peer *old_cfg, struct wireguardif_peer *new_cfg) {
-	old_cfg->connect_ip = new_cfg->endpoint_ip;
-	old_cfg->connect_port = new_cfg->endport_port;
-	old_cfg->ip = old_cfg->connect_ip;
-	old_cfg->port = old_cfg->connect_port;
 	old_cfg->keepalive_interval = new_cfg->keep_alive;
 	peer_add_ip(old_cfg, new_cfg->allowed_ip, new_cfg->allowed_mask);
 	memcpy(old_cfg->greatest_timestamp, new_cfg->greatest_timestamp, sizeof(old_cfg->greatest_timestamp));
@@ -776,11 +738,6 @@ err_t wireguardif_add_peer(struct netif *netif, struct wireguardif_peer *p, u8_t
 			if (peer) {
 
 				if (wireguard_peer_init(device, peer, public_key, p->preshared_key)) {
-
-					peer->connect_ip = p->endpoint_ip;
-					peer->connect_port = p->endport_port;
-					peer->ip = peer->connect_ip;
-					peer->port = peer->connect_port;
 					peer->keepalive_interval = p->keep_alive;
 					peer_add_ip(peer, p->allowed_ip, p->allowed_mask);
 					memcpy(peer->greatest_timestamp, p->greatest_timestamp, sizeof(peer->greatest_timestamp));
@@ -898,10 +855,6 @@ static void wireguardif_tmr(void *arg) {
 				keypair_destroy(&peer->curr_keypair);
 				keypair_destroy(&peer->prev_keypair);
 				// TODO: Also destroy handshake?
-
-				// Revert back to default IP/port if these were altered
-				peer->ip = peer->connect_ip;
-				peer->port = peer->connect_port;
 			}
 			if (should_destroy_current_keypair(peer)) {
 				// Destroy current keypair
@@ -1075,8 +1028,6 @@ void wireguardif_peer_init(struct wireguardif_peer *peer) {
 	memset(peer, 0, sizeof(struct wireguardif_peer));
 	// Caller must provide 'public_key'
 	peer->public_key = NULL;
-	ip_addr_set_any(false, &peer->endpoint_ip);
-	peer->endport_port = WIREGUARDIF_DEFAULT_PORT;
 	peer->keep_alive = 0;
 	for (int i = 0; i < CONFIG_WIREGUARD_MAX_SRC_IPS; i++ ) {
 		ip_addr_set_any(false, &peer->allowed_ip[i]);
