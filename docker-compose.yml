@@ -1,0 +1,49 @@
+networks:
+  esp_wireguard_network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.18.0.0/16
+
+x-wireguard:
+  &wireguard
+  build:
+    context: ./examples/demo_qemu/wireguard_peer
+    dockerfile: Dockerfile
+  image: wireguard
+  networks:
+    esp_wireguard_network:
+  privileged: true
+  tty: true
+
+services:
+  wireguard_peer1:
+    <<: *wireguard
+    container_name: wireguard_peer1
+    volumes:
+      - ${PWD}/examples/demo_qemu/wireguard_peer/peer1/wg0.conf:/etc/wireguard/wg0.conf
+    networks:
+      esp_wireguard_network:
+        ipv4_address: 172.18.0.3
+
+  wireguard_peer2:
+    <<: *wireguard
+    container_name: wireguard_peer2
+    volumes:
+      - ${PWD}/examples/demo_qemu/wireguard_peer/peer2/wg0.conf:/etc/wireguard/wg0.conf
+    networks:
+      esp_wireguard_network:
+        ipv4_address: 172.18.0.5
+
+  esp_wireguard_examples_demo:
+    build:
+      context: ./
+      dockerfile: Dockerfile
+    image: esp_wireguard
+    container_name: esp_wireguard_client
+    networks:
+      esp_wireguard_network:
+        ipv4_address: 172.18.0.4
+    privileged: true
+    stdin_open: true
+    tty: true

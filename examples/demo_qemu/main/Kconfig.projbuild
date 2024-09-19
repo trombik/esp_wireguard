@@ -1,0 +1,108 @@
+menu "Example Configuration"
+
+    config ESP_MAXIMUM_RETRY
+        int "Maximum retry"
+        default 5
+        help
+            Set the Maximum retry to avoid station reconnecting to the AP
+            unlimited when the AP is really inexistent.
+
+    config WG_PRIVATE_KEY
+        string "Wireguard Private Key"
+        # The key is intended for testing purposes only and should never be used in a real environment.
+        default "gBzqhni+8zFtpmeUEbneHu6zs/mesRLmxVFzqDyFJlg="
+        help
+            Private key of the WireGuard device.
+
+    config WG_LOCAL_IP_ADDRESS
+        string "Wireguard local IP address"
+        default "10.0.0.1"
+        help
+            Local IP address of the WireGuard device.
+
+    config WG_LOCAL_IP_NETMASK
+        string "Wireguard local netmask"
+        default "255.255.255.0"
+        help
+            Netmask of the local network the WireGuard device belongs to.
+
+    config WG_LOCAL_PORT
+        int "Wireguard local port"
+        default 53820
+        help
+            Local port to listen.
+
+    config WG_PEER_ONE_PUBLIC_KEY
+        string "Wireguard remote peer public key"
+        default "jWaXciJv964gZHlLBSB6PHzm9AGyVuLjP6hChdPpbSE="
+        help
+            Public key of the 1st remote peer.
+
+    config WG_PEER_TWO_PUBLIC_KEY
+        string "Wireguard remote peer public key"
+        default "4woa7xaCYz2gOgr0HHPT2GXPjuamtVCe9OQvIWBd4RQ="
+        help
+            Public key of the 2nd remote peer.
+
+    config WG_PEER_ONE_ADDRESS
+        string "Wireguard remote peer address"
+        default "10.0.0.2"
+        help
+            Address of the 1st remote peer.
+
+    config WG_PEER_TWO_ADDRESS
+        string "Wireguard remote peer address"
+        default "10.0.0.3"
+        help
+            Address of the 2nd remote peer.
+
+    config WG_PEER_ONE_ENDPOINT
+        string "Wireguard remote peer endpoint"
+        default "172.18.0.3"
+        help
+            Address of the 1st remote peer.
+
+    config WG_PEER_TWO_ENDPOINT
+        string "Wireguard remote peer endpoint"
+        default "172.18.0.5"
+        help
+            Address of the 2nd remote peer.
+
+    config WG_PEER_ONE_MASK
+        string "Wireguard remote peer net mask"
+        default "255.255.255.255"
+        help
+            Address of the 1st remote peer netmask
+
+    config WG_PEER_TWO_MASK
+        string "Wireguard remote peer net mask"
+        default "255.255.255.255"
+        help
+            Address of the 2nd remote peer netmask
+
+    config WG_PEER_ONE_PORT
+        int "Wireguard remote peer port"
+        default 51821
+        help
+            Port number of the remote peer.
+
+    config WG_PEER_TWO_PORT
+        int "Wireguard remote peer port"
+        default 51822
+        help
+            Port number of the remote peer.
+
+    config WG_PERSISTENT_KEEP_ALIVE
+        int "Interval to send an authenticated empty packet"
+        default 1
+        help
+            A seconds interval, between 1 and 65535 inclusive, of how often to
+            send an authenticated empty packet to the peer for the purpose of
+            keeping a stateful firewall or NAT mapping valid persistently
+
+    config EXAMPLE_FALSE_ADDRESS
+        string "Target IP address or name"
+        default "10.0.2.3"
+        help
+            Target IP address to send ICMP echo requests.
+endmenu
