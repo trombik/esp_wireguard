@@ -7,7 +7,9 @@ extern "C" {
 
 #include "wireguard.h"
 
+
 #define BE32_TO_LE32(num) (((num & 0xFF) << 24) | ((num & 0xFF00) << 8) | ((num >> 8) & 0xFF00) | (num >> 24))
+
 
 struct __attribute__((packed)) derp_pkt {
     uint8_t type;
@@ -30,6 +32,7 @@ struct __attribute__((packed)) derp_pkt {
     };
 };
 
+
 // A function called periodically to manage
 // state for DERP connection
 void derp_tick(struct wireguard_device *dev);
@@ -37,12 +40,8 @@ void derp_tick(struct wireguard_device *dev);
 // A function for sending wireguard data out
 err_t derp_send_packet(struct wireguard_device *dev, struct wireguard_peer *peer, struct pbuf *buf);
 
-// A few internal functions
-err_t derp_initiate_new_connection(struct wireguard_device *dev);
-err_t derp_shutdown_connection(struct wireguard_device *dev);
-
 // Updates DERP server IP address to try connecting to
-void set_derp_endpoint(struct wireguard_device *dev, const char* ip, int port);
+void derp_set_endpoint(struct wireguard_device *dev, const char* host, uint16_t port);
 
 
 #ifdef __cplusplus

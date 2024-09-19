@@ -3,3 +3,4 @@
 /examples/*/sdkconfig
 /examples/*/sdkconfig.*
 /examples/*/.vagrant/
+/.vscode
