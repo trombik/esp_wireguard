@@ -21,7 +21,7 @@ menu "Example Configuration"
 
     config WG_PRIVATE_KEY
         string "Wireguard Private Key"
-        default "IDMj7MCa84aqdP2Co9F8FumSjk2lWfnixdVk3oR6zXI="
+        default "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
         help
             Private key of the WireGuard device.
 
@@ -33,7 +33,7 @@ menu "Example Configuration"
 
     config WG_LOCAL_IP_NETMASK
         string "Wireguard local netmask"
-        default "255.255.255.0"
+        default "255.255.255.255"
         help
             Netmask of the local network the WireGuard device belongs to.
 
@@ -45,13 +45,13 @@ menu "Example Configuration"
 
     config WG_PEER_ONE_PUBLIC_KEY
         string "Wireguard remote peer public key"
-        default "T7d7ZIIS7QZcPVc3TVKN8RN0u9EAp4BpULYUwv9yXFk="
+        default "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
         help
             Public key of the 1st remote peer.
 
     config WG_PEER_TWO_PUBLIC_KEY
         string "Wireguard remote peer public key"
-        default "tNZTk/ekeZsMnlTGljbKWSZ4nSL7Gw0+d7gMTLVMFws="
+        default "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
         help
             Public key of the 2nd remote peer.
 
@@ -99,7 +99,7 @@ menu "Example Configuration"
 
     config WG_PEER_ONE_PORT
         int "Wireguard remote peer port"
-        default 53820
+        default 51820
         help
             Port number of the remote peer.
 

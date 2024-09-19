@@ -34,11 +34,6 @@ struct __attribute__((packed)) derp_pkt {
 // state for DERP connection
 void derp_tick(struct wireguard_device *dev);
 
-// State transition functions
-err_t derp_send_http_upgrade_request(struct wireguard_device *dev);
-err_t derp_key_exchange(struct wireguard_device *dev, struct pbuf *buf);
-err_t derp_data_message(struct wireguard_device *dev, struct pbuf *buf, struct derp_pkt *packet);
-
 // A function for sending wireguard data out
 err_t derp_send_packet(struct wireguard_device *dev, struct wireguard_peer *peer, struct pbuf *buf);
 
@@ -46,6 +41,8 @@ err_t derp_send_packet(struct wireguard_device *dev, struct wireguard_peer *peer
 err_t derp_initiate_new_connection(struct wireguard_device *dev);
 err_t derp_shutdown_connection(struct wireguard_device *dev);
 
+// Updates DERP server IP address to try connecting to
+void set_derp_endpoint(struct wireguard_device *dev, const char* ip, int port);
 
 
 #ifdef __cplusplus

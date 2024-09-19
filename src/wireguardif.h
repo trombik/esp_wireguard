@@ -38,9 +38,12 @@
 extern "C" {
 #endif
 
+#include <lwip/udp.h>
 #include "lwip/arch.h"
 #include "lwip/netif.h"
 #include "lwip/ip_addr.h"
+
+#include "esp_wireguard.h"
 
 // Default MTU for WireGuard is 1420 bytes
 #define WIREGUARDIF_MTU (1420)
@@ -141,6 +144,11 @@ err_t wireguardif_peer_is_up(struct netif *netif, uint8_t* pubkey);
 
 // Updates config of an added peer
 err_t wireguardif_update_peer(struct netif *netif, struct wireguardif_peer *peer, uint8_t* public_key);
+
+// Recieves packet from network
+void wireguardif_network_rx(void *arg, struct udp_pcb *pcb, struct pbuf *p, const ip_addr_t *addr, u16_t port);
+
+conn_state_t wireguardif_get_derp_conn_status(struct netif *netif);
 #ifdef __cplusplus
 }
 #endif

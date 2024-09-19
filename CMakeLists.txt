@@ -1,5 +1,6 @@
 idf_component_register(
     SRCS "src/crypto.c"
+         "src/derp.c"
          "src/wireguard.c"
          "src/wireguardif.c"
          "src/wireguard-platform.c"

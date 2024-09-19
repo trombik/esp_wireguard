@@ -86,6 +86,16 @@ typedef struct {
     struct netif*       netif_default; /**< a pointer to the default netif. */
 } wireguard_ctx_t;
 
+// DERP state
+typedef enum {
+        CONN_STATE_INPUT_ERROR = -1,
+        CONN_STATE_TCP_DISCONNECTED = 0,
+        CONN_STATE_TCP_CONNECTING,
+        CONN_STATE_HTTP_GET_REQ,
+        CONN_STATE_HTTP_KEY_EXHCANGE,
+        CONN_STATE_DERP_READY,
+}conn_state_t;
+
 /**
  * @brief Initialize WireGuard
  *
@@ -174,6 +184,24 @@ esp_err_t esp_wireguard_remove_peer(wireguard_ctx_t* ctx, const char *pubkey);
  */
 esp_err_t esp_wireguard_update_peer(wireguard_ctx_t* ctx, wireguard_peer_config_t *peer_config);
 
+/**
+ * @brief Update a peer in wireguard
+ *
+ * @param ctx Context of wireguard
+ * @param ip_addr Ip address of derp server to connect
+ * @return
+ *      - ESP_OK on success.
+ */
+esp_err_t esp_wireguard_set_derp_server(wireguard_ctx_t *ctx, const char *ip_addr, int port);
+
+/**
+ * @brief Returns the current derp connection status
+ *
+ * @param ctx Context of wireguard
+ * @return
+ *      - DERP status
+ */
+conn_state_t esp_wireguard_get_derp_conn_status(wireguard_ctx_t *ctx);
 #ifdef __cplusplus
 }
 #endif

@@ -43,6 +43,8 @@
 #include "wireguard-platform.h"
 #include "wireguardif.h"
 
+#include "derp.h"
+
 #define TAG "esp_wireguard"
 #define WG_KEY_LEN  (32)
 #define WG_B64_KEY_LEN (4 * ((WG_KEY_LEN + 2) / 3))
@@ -323,6 +325,25 @@ esp_err_t esp_wireguard_set_default(wireguard_ctx_t *ctx)
     err = ESP_OK;
 fail:
     return err;
+}
+
+esp_err_t esp_wireguard_set_derp_server(wireguard_ctx_t *ctx, const char *ip_addr, int port) {
+    esp_err_t err = ESP_OK;
+    // Check ip_addr is not null and ends in null char
+    if (!ip_addr || !ctx) {
+        err = ESP_ERR_INVALID_ARG;
+        goto fail;
+    }
+    set_derp_endpoint((struct wireguard_device*) ctx->netif->state, ip_addr, port);
+fail:
+    return err;
+}
+
+conn_state_t esp_wireguard_get_derp_conn_status(wireguard_ctx_t *ctx) {
+    if (!ctx) {
+        return CONN_STATE_INPUT_ERROR;
+    }
+    return wireguardif_get_derp_conn_status(ctx->netif);
 }
 
 esp_err_t esp_wireguard_remove_peer_by_key(wireguard_ctx_t* ctx, uint8_t* key, enum PEER_LOOKUP_TYPE key_type) {

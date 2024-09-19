@@ -50,6 +50,9 @@ extern "C" {
 #include "lwip/arch.h"
 
 #include "esp_tls.h"
+#include "esp_wireguard.h"
+
+#include <sys/socket.h>
 
 // Platform-specific functions that need to be implemented per-platform
 #include "wireguard-platform.h"
@@ -176,20 +179,18 @@ struct wireguard_peer {
 	bool send_handshake;
 };
 
-// DERP state
-enum conn_state_t {
-        CONN_STATE_TCP_DISCONNECTED = 0,
-        CONN_STATE_TCP_CONNECTING,
-        CONN_STATE_HTTP_GET_REQ,
-        CONN_STATE_HTTP_KEY_EXHCANGE,
-        CONN_STATE_DERP_READY,
-};
+typedef struct {
+	char addr[INET_ADDRSTRLEN];
+	int port;
+	uint8_t addr_len;
+} EndPoint;
 
 struct derp_state_t {
     esp_tls_t *tls;
     TaskHandle_t read_interface_worker;
-    enum conn_state_t conn_state;
+    conn_state_t conn_state;
     uint8_t ticks_connecting;
+	EndPoint endpoint;
 };
 
 struct wireguard_device {

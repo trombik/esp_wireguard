@@ -407,6 +407,8 @@ void app_main(void)
         goto fail;
     }
 
+    esp_wireguard_set_derp_server(&ctx, "149.88.19.146", 8765);
+
     while (1) {
         vTaskDelay(1000 / portTICK_PERIOD_MS);
         err = esp_wireguardif_peer_is_up(&ctx, peer_one_config.public_key);
