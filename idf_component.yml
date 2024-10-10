@@ -1,0 +1,5 @@
+---
+version: "0.9.0"
+description: WireGuard Implementation for ESP-IDF
+url: https://github.com/trombik/esp_wireguard
+license: BSD-3-Clause
